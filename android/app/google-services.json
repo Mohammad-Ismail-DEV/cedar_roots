@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "344338108473",
+    "project_id": "cedar-roots-453719",
+    "storage_bucket": "cedar-roots-453719.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:344338108473:android:4f42e475e0f5942b45bde8",
+        "android_client_info": {
+          "package_name": "com.mohamad_and_hala.cedar_roots"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "344338108473-q33tljdv7berb5qqlv417rm9fdjji1gg.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBPFOdyk21yAZNhMfsV4GqFJK833yuIBGQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "344338108473-q33tljdv7berb5qqlv417rm9fdjji1gg.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

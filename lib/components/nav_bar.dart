@@ -3,6 +3,7 @@ import 'package:cedar_roots/screens/create_event.dart';
 import 'package:cedar_roots/screens/home.dart';
 import 'package:cedar_roots/screens/notifications.dart';
 import 'package:cedar_roots/screens/profile.dart';
+import 'package:cedar_roots/services/firebase_service.dart';
 import 'package:flutter/material.dart';
 
 class NavBar extends StatefulWidget {
@@ -21,6 +22,9 @@ class _NavBarState extends State<NavBar> {
     NotificationsScreen(),
     ProfileScreen(),
   ];
+  void initState() {
+    super.initState();
+  }
 
   void _onItemTapped(int index) {
     setState(() {
