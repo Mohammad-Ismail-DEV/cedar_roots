@@ -143,43 +143,43 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text('Notifications')),
-      body:
-          checkingLogin
-              ? Center(child: CircularProgressIndicator())
-              : _notifications.isEmpty
-              ? Center(child: Text('No notifications'))
-              : ListView.builder(
-                itemCount: _notifications.length,
-                itemBuilder: (context, index) {
-                  final notif = _notifications[index];
-                  final isRead = notif['is_read'] == true;
+    return checkingLogin
+        ? Center(child: CircularProgressIndicator())
+        : Scaffold(
+          appBar: AppBar(title: Text('Notifications')),
+          body:
+              _notifications.isEmpty
+                  ? Center(child: Text('No notifications'))
+                  : ListView.builder(
+                    itemCount: _notifications.length,
+                    itemBuilder: (context, index) {
+                      final notif = _notifications[index];
+                      final isRead = notif['is_read'] == true;
 
-                  return ListTile(
-                    tileColor: isRead ? Colors.grey[200] : Colors.white,
-                    title: Text(notif['message'] ?? 'Notification'),
-                    subtitle: Text(notif['type'] ?? 'info'),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (!isRead)
-                          IconButton(
-                            icon: Icon(Icons.done, color: Colors.green),
-                            onPressed: () => _markAsRead(notif['id']),
-                            tooltip: 'Mark as read',
-                          ),
-                        IconButton(
-                          icon: Icon(Icons.delete, color: Colors.red),
-                          onPressed: () => _deleteNotification(notif['id']),
-                          tooltip: 'Delete',
+                      return ListTile(
+                        tileColor: isRead ? Colors.grey[200] : Colors.white,
+                        title: Text(notif['message'] ?? 'Notification'),
+                        subtitle: Text(notif['type'] ?? 'info'),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (!isRead)
+                              IconButton(
+                                icon: Icon(Icons.done, color: Colors.green),
+                                onPressed: () => _markAsRead(notif['id']),
+                                tooltip: 'Mark as read',
+                              ),
+                            IconButton(
+                              icon: Icon(Icons.delete, color: Colors.red),
+                              onPressed: () => _deleteNotification(notif['id']),
+                              tooltip: 'Delete',
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                    onTap: () => _handleNotificationTap(notif),
-                  );
-                },
-              ),
-    );
+                        onTap: () => _handleNotificationTap(notif),
+                      );
+                    },
+                  ),
+        );
   }
 }
