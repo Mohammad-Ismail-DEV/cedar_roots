@@ -20,6 +20,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController _passwordController = TextEditingController();
 
   final GoogleSignIn _googleSignIn = GoogleSignIn();
+  bool _passwordVisible = false; // Variable to control password visibility
 
   void _showError(String message) {
     ScaffoldMessenger.of(
@@ -56,7 +57,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
 
     try {
-      final response = await ApiService().register(name, email, password);
+      final response = await ApiServices().register(name, email, password);
 
       if (response.statusCode == 200) {
         Navigator.pushReplacement(
@@ -155,8 +156,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
             // Password field
             TextField(
               controller: _passwordController,
-              obscureText: true,
-              decoration: InputDecoration(labelText: 'Password'),
+              obscureText: !_passwordVisible, // Toggle password visibility
+              decoration: InputDecoration(
+                labelText: 'Password',
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    _passwordVisible ? Icons.visibility : Icons.visibility_off,
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      _passwordVisible = !_passwordVisible;
+                    });
+                  },
+                ),
+              ),
             ),
             SizedBox(height: 20),
             // Register button

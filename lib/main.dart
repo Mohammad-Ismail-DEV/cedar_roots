@@ -1,4 +1,5 @@
 import 'package:cedar_roots/components/nav_bar.dart';
+import 'package:cedar_roots/services/api_service.dart';
 // import 'package:cedar_roots/screens/test.dart';
 import 'package:cedar_roots/services/socket_service.dart';
 import 'package:flutter/material.dart';
@@ -10,7 +11,8 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform, // <-- Make sure this is added
+    options:
+        DefaultFirebaseOptions.currentPlatform, // <-- Make sure this is added
   );
   SharedPreferences prefs = await SharedPreferences.getInstance();
   int? userId = prefs.getInt('user_id');
@@ -18,9 +20,11 @@ void main() async {
   if (userId != null) {
     SocketService().connect(userId);
   }
-
+  await ApiServices().init();
   runApp(MyApp());
 }
+
+final RouteObserver<PageRoute> routeObserver = RouteObserver<PageRoute>();
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -29,8 +33,9 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorObservers: [routeObserver],
       navigatorKey: navigatorKey,
-      title: 'Flutter Demo',
+      title: 'Cedar Roots',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.lightBlue),
@@ -40,5 +45,3 @@ class MyApp extends StatelessWidget {
     );
   }
 }
-
-

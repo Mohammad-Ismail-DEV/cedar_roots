@@ -6,7 +6,6 @@ import 'package:cedar_roots/services/socket_service.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 class LoginScreen extends StatefulWidget {
@@ -51,11 +50,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     try {
-      final response = await http.post(
-        Uri.parse('http://13.48.155.59:3000/auth/login'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'email': email, 'password': password}),
-      );
+      final response = await ApiServices().login(email, password);
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -70,7 +65,7 @@ class _LoginScreenState extends State<LoginScreen> {
         await prefs.setString('name', name);
         await prefs.setInt('user_id', userId);
 
-        ApiService().setToken(token);
+        ApiServices().setToken(token);
 
         SocketService().connect(userId); // Connect to socket after login
 
@@ -179,6 +174,7 @@ class _LoginScreenState extends State<LoginScreen> {
             TextField(
               controller: _emailController,
               decoration: InputDecoration(labelText: 'Email'),
+              keyboardType: TextInputType.emailAddress,
             ),
             TextField(
               controller: _passwordController,

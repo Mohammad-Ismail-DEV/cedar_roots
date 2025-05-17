@@ -13,7 +13,7 @@ class ScrollToBottomButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Positioned(
-      bottom: 70,
+      bottom: 80,
       right: 20,
       child: Stack(
         alignment: Alignment.topRight,

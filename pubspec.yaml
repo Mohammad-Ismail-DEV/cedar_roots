@@ -30,7 +30,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-
+  flutter_launcher_icons: ^0.13.1
+  flutter_native_splash: ^2.3.2
   shared_preferences: ^2.0.15
   google_sign_in: ^5.0.7
   # sign_in_with_apple: ^3.0.0
@@ -51,6 +52,7 @@ dependencies:
   mime: ^1.0.4
   photo_view: ^0.14.0
   permission_handler: ^11.0.1
+  connectivity_plus: ^5.0.2
 
 dev_dependencies:
   flutter_test:
@@ -66,6 +68,18 @@ dev_dependencies:
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 
+flutter_native_splash:
+  color: "#0B1E3A" # or your background color
+  image: assets/splash/roots.png # or tree_only_logo3.png
+  android: true
+  ios: true
+  fullscreen: true
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon/roots.png"  # fallback
+  
 # The following section is specific to Flutter packages.
 flutter:
   assets:

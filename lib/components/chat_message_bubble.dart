@@ -15,7 +15,7 @@ class ChatMessageBubble extends StatelessWidget {
 
   String _formatTime(String time) {
     final dateTime = DateTime.parse(time).toLocal();
-    return DateFormat.jm().format(dateTime); // 12-hour format
+    return DateFormat.jm().format(dateTime);
   }
 
   @override
@@ -24,13 +24,13 @@ class ChatMessageBubble extends StatelessWidget {
     final type = message['type'] ?? 'text';
     final sentAt = message['sent_at'] ?? '';
     final readStatus = message['read_status'] ?? false;
-    final deliveryStatus = message['status'];
 
     Widget statusIcon() {
-      if (readStatus == true) {
-        return Icon(Icons.done_all, size: 14, color: Colors.blue);
-      }
-      switch (deliveryStatus) {
+      if (!isMe) return Container();
+
+      switch (readStatus) {
+        case 'seen':
+          return Icon(Icons.done_all, size: 14, color: Colors.blue);
         case 'sending':
           return Icon(Icons.schedule, size: 14, color: Colors.grey[300]);
         case 'sent':
@@ -61,9 +61,16 @@ class ChatMessageBubble extends StatelessWidget {
                   color: Colors.black54,
                   borderRadius: BorderRadius.circular(6),
                 ),
-                child: Text(
-                  _formatTime(sentAt),
-                  style: TextStyle(color: Colors.white, fontSize: 10),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      _formatTime(sentAt),
+                      style: TextStyle(color: Colors.white70, fontSize: 10),
+                    ),
+                    SizedBox(width: 4),
+                    statusIcon(),
+                  ],
                 ),
               ),
             ),

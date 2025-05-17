@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cedar_roots/screens/chat.dart';
@@ -62,60 +61,72 @@ class _ChatsScreenState extends State<ChatsScreen> {
         children: [
           conversations.isEmpty
               ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: const [
-                      Text(
-                        'No open chats',
-                        style: TextStyle(fontSize: 28, fontWeight: FontWeight.w500, color: Colors.grey),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: const [
+                    Text(
+                      'No open chats',
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.grey,
                       ),
-                    ],
-                  ),
-                )
+                    ),
+                  ],
+                ),
+              )
               : ListView.builder(
-                  itemCount: conversations.length,
-                  itemBuilder: (context, index) {
-                    final conversation = conversations[index];
-                    final lastMsg = conversation['last_message'] ?? {};
-                    final isGroup = conversation['type'] == 'group';
-                    final isSentByMe = lastMsg['status'] == 'sent';
-                    final content = lastMsg['type'] == 'image' ? '📷 image' : lastMsg['content'] ?? '';
+                itemCount: conversations.length,
+                itemBuilder: (context, index) {
+                  final conversation = conversations[index];
+                  final lastMsg = conversation['last_message'] ?? {};
+                  final isGroup = conversation['type'] == 'group';
+                  final isSentByMe = lastMsg['status'] == 'sent';
+                  final content =
+                      lastMsg['type'] == 'image'
+                          ? '📷 image'
+                          : lastMsg['content'] ?? '';
 
-                    return ChatListTile(
-                      name: conversation['name'],
-                      content: content,
-                      timestamp: lastMsg['sent_at'],
-                      unreadCount: conversation['unread_count'] ?? 0,
-                      isGroup: isGroup,
-                      isSentByMe: isSentByMe,
-                      status: isSentByMe
-                          ? (lastMsg['read_status'] == true
-                              ? 'read'
-                              : lastMsg['status'] ?? 'sending')
-                          : '',
-                      onTap: () {
-                        final route = isGroup
-                            ? MaterialPageRoute(
-                                builder: (context) => GroupChatScreen(
+                  return ChatListTile(
+                    name: conversation['name'],
+                    content: content,
+                    timestamp: lastMsg['sent_at'],
+                    unreadCount: conversation['unread_count'] ?? 0,
+                    isGroup: isGroup,
+                    isSentByMe: isSentByMe,
+                    status:
+                        isSentByMe
+                            ? (lastMsg['read_status'] == true
+                                ? 'read'
+                                : lastMsg['status'] ?? 'sending')
+                            : '',
+                    profilePic: conversation['profile_pic'],
+                    onTap: () {
+                      final route =
+                          isGroup
+                              ? MaterialPageRoute(
+                                builder:
+                                    (context) => GroupChatScreen(
                                       groupId: conversation['group_id'],
                                       groupName: conversation['name'],
                                     ),
                               )
-                            : MaterialPageRoute(
-                                builder: (context) => ChatScreen(
+                              : MaterialPageRoute(
+                                builder:
+                                    (context) => ChatScreen(
                                       receiverId: conversation['user_id'],
                                       name: conversation['name'],
                                     ),
                               );
 
-                        Navigator.push(context, route).then((_) async {
-                          await Future.delayed(Duration(milliseconds: 200));
-                          _fetchMessages();
-                        });
-                      },
-                    );
-                  },
-                ),
+                      Navigator.push(context, route).then((_) async {
+                        await Future.delayed(Duration(milliseconds: 200));
+                        _fetchMessages();
+                      });
+                    },
+                  );
+                },
+              ),
           Positioned(
             bottom: 20,
             right: 20,
@@ -125,7 +136,10 @@ class _ChatsScreenState extends State<ChatsScreen> {
               child: FloatingActionButton(
                 backgroundColor: const Color(0xFF228B22).withOpacity(0.85),
                 onPressed: () {
-                  Navigator.push(context, MaterialPageRoute(builder: (_) => ConnectionsScreen()));
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => ConnectionsScreen(userId:currentUserId)),
+                  );
                 },
                 child: const Icon(Icons.chat, size: 30, color: Colors.white),
               ),

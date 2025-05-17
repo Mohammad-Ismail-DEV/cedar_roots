@@ -31,7 +31,7 @@ class _VerificationScreenState extends State<VerificationScreen> {
     });
 
     try {
-      final response = await ApiService().verifyCode(widget.email, _otpCode);
+      final response = await ApiServices().verifyCode(widget.email, _otpCode);
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -43,10 +43,10 @@ class _VerificationScreenState extends State<VerificationScreen> {
         await prefs.setBool('is_logged_in', true);
         await prefs.setString('email', user['email']);
         await prefs.setString('name', user['name']);
-        await prefs.setInt('user_id', user['user_id']);
+        await prefs.setInt('user_id', user['id']);
         await prefs.setString('auth_token', token);
 
-        ApiService().setToken(token);
+        ApiServices().setToken(token);
 
         Navigator.pushReplacement(
           context,
@@ -60,7 +60,7 @@ class _VerificationScreenState extends State<VerificationScreen> {
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Verification failed. Please try again.")),
+        SnackBar(content: Text(e.toString())),
       );
     } finally {
       setState(() {

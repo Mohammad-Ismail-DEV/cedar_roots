@@ -1,9 +1,23 @@
-import 'dart:io';
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'package:device_info_plus/device_info_plus.dart';
 
-String platform = Platform.isAndroid ? 'android' : 'ios';
+final String platform =
+    kIsWeb
+        ? 'web'
+        : Platform.isWindows
+        ? 'windows'
+        : Platform.isMacOS
+        ? 'macos'
+        : Platform.isLinux
+        ? 'linux'
+        : Platform.isAndroid
+        ? 'android'
+        : Platform.isIOS
+        ? 'ios'
+        : 'unknown';
 
 class SocketService {
   late IO.Socket socket;
@@ -13,7 +27,7 @@ class SocketService {
   List<Map<String, dynamic>> messages = [];
 
   SocketService() {
-    socket = IO.io('http://13.48.155.59:3000', <String, dynamic>{
+    socket = IO.io('http://13.50.2.82:3000', <String, dynamic>{
       'transports': ['websocket'],
       'autoConnect': false,
     });
@@ -27,16 +41,29 @@ class SocketService {
   Future<String> getDeviceId() async {
     final deviceInfoPlugin = DeviceInfoPlugin();
 
-    if (Platform.isAndroid) {
+    if (kIsWeb) {
+      return 'web_device';
+    } else if (Platform.isAndroid) {
       final androidInfo = await deviceInfoPlugin.androidInfo;
       return androidInfo.id;
     } else if (Platform.isIOS) {
       final iosInfo = await deviceInfoPlugin.iosInfo;
       return iosInfo.identifierForVendor ?? 'unknown_ios_device';
+    } else if (Platform.isMacOS) {
+      final macInfo = await deviceInfoPlugin.macOsInfo;
+      return macInfo.systemGUID ?? 'mac_device';
+    } else if (Platform.isWindows) {
+      final windowsInfo = await deviceInfoPlugin.windowsInfo;
+      return windowsInfo.deviceId;
+    } else if (Platform.isLinux) {
+      final linuxInfo = await deviceInfoPlugin.linuxInfo;
+      return linuxInfo.machineId ?? 'linux_device';
     } else {
-      return 'unknown';
+      return 'unknown_device';
     }
   }
+
+  Function(Map<String, dynamic> message)? onMessageReceived;
 
   void connect(int userId) {
     _userId = userId;
@@ -48,6 +75,11 @@ class SocketService {
     });
 
     socket.onDisconnect((_) => print('🔌 Socket disconnected'));
+
+    socket.on('receive_message', (data) {
+      print('📥 Message received: $data');
+      if (onMessageReceived != null) onMessageReceived!(data);
+    });
 
     socket.on('fcm_token_removed', (data) {
       if (data['success'] == true) {

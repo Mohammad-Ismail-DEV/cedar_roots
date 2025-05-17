@@ -9,6 +9,7 @@ class ChatListTile extends StatelessWidget {
   final bool isGroup;
   final bool isSentByMe;
   final String status;
+  final String? profilePic;
   final VoidCallback onTap;
 
   const ChatListTile({
@@ -20,6 +21,7 @@ class ChatListTile extends StatelessWidget {
     required this.isGroup,
     required this.isSentByMe,
     required this.status,
+    this.profilePic,
     required this.onTap,
   }) : super(key: key);
 
@@ -32,13 +34,16 @@ class ChatListTile extends StatelessWidget {
 
     return ListTile(
       onTap: onTap,
-      leading: CircleAvatar(
-        backgroundColor: isGroup ? Colors.green : Colors.blue,
-        child: Text(
-          name[0].toUpperCase(),
-          style: TextStyle(color: Colors.white),
-        ),
-      ),
+      leading:
+          profilePic != null && profilePic!.isNotEmpty
+              ? CircleAvatar(backgroundImage: NetworkImage(profilePic!))
+              : CircleAvatar(
+                backgroundColor: isGroup ? Colors.green : Colors.blue,
+                child: Text(
+                  name[0].toUpperCase(),
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
       title: Text(name),
       subtitle: Row(
         children: [

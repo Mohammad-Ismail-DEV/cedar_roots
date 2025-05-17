@@ -1,9 +1,10 @@
 import 'dart:convert';
+import 'package:cedar_roots/services/api_service.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:cedar_roots/services/socket_service.dart';
 import 'package:cedar_roots/components/chat_message_bubble.dart';
 import 'package:cedar_roots/components/day_separator.dart';
@@ -29,12 +30,12 @@ class _ChatScreenState extends State<ChatScreen> {
 
   late int currentUserId;
   List<Map<String, dynamic>> messages = [];
+  List<Map<String, dynamic>> pendingMessages = [];
   int currentPage = 1;
   bool loadingMore = false;
   bool isReady = false;
   bool isInitialLoad = true;
   bool showScrollToBottom = false;
-  int? unreadIndex;
   int newMessagesCount = 0;
 
   @override
@@ -42,19 +43,53 @@ class _ChatScreenState extends State<ChatScreen> {
     super.initState();
     _initializeUser();
     _scrollController.addListener(_scrollListener);
-    _socketService.socket.on('receive_message', _handleReceiveMessage);
-    _socketService.socket.on('messages_seen_by_receiver', _handleSeenMessages);
-    _socketService.socket.on('message_saved', _handleMessageSaved);
+    Connectivity().onConnectivityChanged.listen((result) {
+      if (result != ConnectivityResult.none && pendingMessages.isNotEmpty) {
+        for (var msg in pendingMessages) {
+          _socketService.socket.emit("send_message", msg);
+        }
+        pendingMessages.clear();
+      }
+    });
   }
 
   @override
   void dispose() {
     _scrollController.dispose();
     _textController.dispose();
-    _socketService.socket.off('receive_message', _handleReceiveMessage);
-    _socketService.socket.off('messages_seen_by_receiver', _handleSeenMessages);
-    _socketService.socket.off('message_saved', _handleMessageSaved);
+    _socketService.onMessageReceived = null;
     super.dispose();
+  }
+
+  Future<void> _initializeUser() async {
+    final prefs = await SharedPreferences.getInstance();
+    currentUserId = prefs.getInt('user_id') ?? 0;
+    _socketService.connect(currentUserId);
+    _socketService.socket.on('messages_seen_by_receiver', _handleSeenMessages);
+    _socketService.socket.on('message_saved', _handleMessageSaved);
+    _socketService.socket.on("message_delivered", _handleMessageDelivered);
+    _socketService.onMessageReceived = _handleReceiveMessage;
+
+    try {
+      await _fetchMessages();
+    } catch (e) {
+      print('⚠️ Failed to fetch messages, loading from cache.');
+      await _loadCachedMessages();
+    }
+
+    setState(() => isReady = true);
+    _scrollToBottom();
+  }
+
+  Future<void> _loadCachedMessages() async {
+    final prefs = await SharedPreferences.getInstance();
+    final cached = prefs.getString('chat_${widget.receiverId}');
+    if (cached != null) {
+      final List decoded = jsonDecode(cached);
+      setState(() {
+        messages = List<Map<String, dynamic>>.from(decoded);
+      });
+    }
   }
 
   void _handleMessageSaved(dynamic data) {
@@ -65,35 +100,11 @@ class _ChatScreenState extends State<ChatScreen> {
       for (var msg in messages) {
         if (msg['id'] == localId) {
           msg['id'] = realId;
+          msg['read_status'] = "sent";
           break;
         }
       }
     });
-  }
-
-  void _handleReceiveMessage(dynamic data) {
-    if (!mounted) return;
-    if (data['sender_id'] == widget.receiverId ||
-        data['receiver_id'] == widget.receiverId) {
-      final newMsg = _mapMessage(data);
-      setState(() => messages.add(newMsg));
-
-      final atBottom =
-          _scrollController.hasClients &&
-          _scrollController.offset >=
-              _scrollController.position.maxScrollExtent - 50;
-
-      if (atBottom) {
-        _scrollToBottom();
-        _markMessagesAsRead();
-        unreadIndex = null;
-      } else {
-        setState(() {
-          showScrollToBottom = true;
-          newMessagesCount += 1;
-        });
-      }
-    }
   }
 
   void _handleSeenMessages(dynamic data) {
@@ -103,22 +114,62 @@ class _ChatScreenState extends State<ChatScreen> {
       setState(() {
         for (var msg in messages) {
           if (msg['status'] == 'sent' &&
-              !msg['read_status'] &&
+              msg['read_status'] != "seen" &&
               seenIds.contains(msg['id'])) {
-            msg['read_status'] = true;
+            msg['read_status'] = "seen";
           }
         }
       });
     }
   }
 
-  Future<void> _initializeUser() async {
-    final prefs = await SharedPreferences.getInstance();
-    currentUserId = prefs.getInt('user_id') ?? 0;
-    _socketService.connect(currentUserId);
-    await _fetchMessages();
-    setState(() => isReady = true);
-    _scrollToBottom();
+  void _handleReceiveMessage(dynamic data) {
+    if (!mounted) return;
+    if (data['sender_id'] == widget.receiverId ||
+        data['receiver_id'] == widget.receiverId) {
+      final newMsg = _mapMessage(data);
+      setState(() => messages.add(newMsg));
+
+      if (data['id'] != null) {
+        _socketService.socket.emit("message_received", {
+          "messageId": data['id'],
+          "senderId": data['sender_id'],
+          "receiverId": data['receiver_id'],
+        });
+      }
+
+      final atBottom =
+          _scrollController.hasClients &&
+          _scrollController.offset >=
+              _scrollController.position.maxScrollExtent - 50;
+
+      if (atBottom) {
+        _scrollToBottom();
+        _markMessagesAsRead();
+        setState(() {
+          showScrollToBottom = false;
+          newMessagesCount = 0;
+        });
+      } else {
+        setState(() {
+          showScrollToBottom = true;
+          newMessagesCount += 1;
+        });
+      }
+    }
+  }
+
+  void _handleMessageDelivered(dynamic data) {
+    if (!mounted) return;
+    final deliveredId = data['messageId'];
+    setState(() {
+      for (var msg in messages) {
+        if (msg['id'] == deliveredId) {
+          msg['read_status'] = 'delivered';
+          break;
+        }
+      }
+    });
   }
 
   Future<void> _fetchMessages() async {
@@ -129,7 +180,7 @@ class _ChatScreenState extends State<ChatScreen> {
       "page": currentPage,
     });
 
-    _socketService.socket.once("fetched_messages", (data) {
+    _socketService.socket.once("fetched_messages", (data) async {
       if (!mounted) return;
       final fetched = List<Map<String, dynamic>>.from(data.map(_mapMessage));
       setState(() {
@@ -137,11 +188,13 @@ class _ChatScreenState extends State<ChatScreen> {
         loadingMore = false;
       });
 
+      // Save to cache
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('chat_${widget.receiverId}', jsonEncode(messages));
+
       if (isInitialLoad) {
-        WidgetsBinding.instance.addPostFrameCallback(
-          (_) => _scrollToFirstUnread(),
-        );
         isInitialLoad = false;
+        WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
       }
     });
   }
@@ -156,7 +209,8 @@ class _ChatScreenState extends State<ChatScreen> {
   };
 
   void _scrollListener() {
-    if (_scrollController.offset <= 0 && !loadingMore) {
+    if (!mounted || !_scrollController.hasClients) return;
+    if (_scrollController.offset <= 100 && !loadingMore) {
       currentPage++;
       _fetchMessages();
     }
@@ -165,9 +219,11 @@ class _ChatScreenState extends State<ChatScreen> {
         _scrollController.position.maxScrollExtent - 50;
     if (atBottom) {
       _markMessagesAsRead();
-      unreadIndex = null;
+      setState(() {
+        showScrollToBottom = false;
+        newMessagesCount = 0;
+      });
     }
-    setState(() => showScrollToBottom = !atBottom);
   }
 
   void _scrollToBottom() {
@@ -181,25 +237,12 @@ class _ChatScreenState extends State<ChatScreen> {
     });
   }
 
-  void _scrollToFirstUnread() {
-    if (!_scrollController.hasClients) return;
-    final index = messages.indexWhere(
-      (m) => m['status'] == 'received' && !m['read_status'],
-    );
-    unreadIndex = index != -1 ? index : null;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (unreadIndex != null) {
-        _scrollController.jumpTo(unreadIndex! * 100.0);
-      } else {
-        _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
-      }
-    });
-  }
-
   void _markMessagesAsRead() {
     final unread =
         messages
-            .where((m) => m['status'] == 'received' && !m['read_status'])
+            .where(
+              (m) => m['status'] == 'received' && m['read_status'] != "seen",
+            )
             .toList();
     if (unread.isEmpty) return;
     _socketService.socket.emit("mark_messages_as_read", {
@@ -207,14 +250,13 @@ class _ChatScreenState extends State<ChatScreen> {
       "receiverId": currentUserId,
     });
     for (var msg in unread) {
-      msg['read_status'] = true;
+      msg['read_status'] = "seen";
     }
     setState(() {});
   }
 
-  void _sendMessage(String content, String type) {
+  void _sendMessage(String content, String type) async {
     final localId = DateTime.now().millisecondsSinceEpoch;
-    _textController.clear();
     final message = {
       "senderId": currentUserId,
       "receiverId": widget.receiverId,
@@ -222,16 +264,28 @@ class _ChatScreenState extends State<ChatScreen> {
       "type": type,
       "local_id": localId,
     };
-    _socketService.socket.emit("send_message", message);
+
+    final isOnline =
+        await Connectivity().checkConnectivity() != ConnectivityResult.none;
+
+    if (isOnline) {
+      _socketService.socket.emit("send_message", message);
+    } else {
+      pendingMessages.add(message);
+    }
+
     setState(() {
       messages.add({
         ...message,
         'sent_at': DateTime.now().toIso8601String(),
         'status': 'sent',
-        'read_status': false,
+        'read_status': 'sending',
+        'type': type,
         'id': localId,
       });
     });
+
+    _textController.clear();
     _scrollToBottom();
   }
 
@@ -239,16 +293,32 @@ class _ChatScreenState extends State<ChatScreen> {
     final picked = await ImagePicker().pickMultiImage();
     if (picked.isEmpty) return;
     for (var file in picked) {
-      final req = http.MultipartRequest(
-        "POST",
-        Uri.parse("http://13.48.155.59:3000/upload"),
-      );
-      req.files.add(await http.MultipartFile.fromPath('file', file.path));
-      final response = await req.send();
-      final resBody = await response.stream.bytesToString();
-      final fileUrl = json.decode(resBody)['url'];
-      _sendMessage(fileUrl, 'image');
+      final fileUrl = await ApiServices().uploadFile(file);
+      if (fileUrl != null) {
+        _sendMessage(fileUrl, 'image');
+      } else {
+        return;
+      }
     }
+  }
+
+  String _formatDate(String time) =>
+      DateFormat('MMMM d, y').format(DateTime.parse(time).toLocal());
+
+  bool _isNewDay(int i) {
+    if (i == 0) return true;
+    final d1 = DateTime.parse(messages[i]['sent_at']).toLocal();
+    final d2 = DateTime.parse(messages[i - 1]['sent_at']).toLocal();
+    return d1.day != d2.day || d1.month != d2.month || d1.year != d2.year;
+  }
+
+  bool _isUnreadSeparator(int index) {
+    final msg = messages[index];
+    if (msg['status'] != 'received' || msg['read_status'] == "seen")
+      return false;
+    return messages
+        .sublist(0, index)
+        .every((m) => m['read_status'] == "seen" || m['status'] == 'sent');
   }
 
   @override
@@ -275,15 +345,13 @@ class _ChatScreenState extends State<ChatScreen> {
                             final msg = messages[i];
                             final isMe = msg['status'] == 'sent';
                             final type = msg['type'] ?? 'text';
-                            final unreadSeparator = _isUnreadSeparator(i);
-
                             return Column(
                               children: [
                                 if (_isNewDay(i))
                                   DaySeparator(
                                     formattedDate: _formatDate(msg['sent_at']),
                                   ),
-                                if (unreadSeparator)
+                                if (_isUnreadSeparator(i))
                                   const NewMessageIndicator(),
                                 ChatMessageBubble(
                                   message: msg,
@@ -344,23 +412,5 @@ class _ChatScreenState extends State<ChatScreen> {
                 ],
               ),
     );
-  }
-
-  String _formatDate(String time) =>
-      DateFormat('MMMM d, y').format(DateTime.parse(time).toLocal());
-
-  bool _isNewDay(int i) {
-    if (i == 0) return true;
-    final d1 = DateTime.parse(messages[i]['sent_at']).toLocal();
-    final d2 = DateTime.parse(messages[i - 1]['sent_at']).toLocal();
-    return d1.day != d2.day || d1.month != d2.month || d1.year != d2.year;
-  }
-
-  bool _isUnreadSeparator(int index) {
-    final msg = messages[index];
-    if (msg['status'] != 'received' || msg['read_status']) return false;
-    return messages
-        .sublist(0, index)
-        .every((m) => m['read_status'] || m['status'] == 'sent');
   }
 }
