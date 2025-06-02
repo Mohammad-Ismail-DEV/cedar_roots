@@ -35,11 +35,11 @@ dependencies:
   shared_preferences: ^2.0.15
   google_sign_in: ^5.0.7
   # sign_in_with_apple: ^3.0.0
-  pin_code_fields: ^7.0.0
+  pin_code_fields: ^8.0.0
   cupertino_icons: ^1.0.8
   google_sign_in_web: ^0.10.2+1
   socket_io_client: ^2.0.3+1
-  http: ^0.13.6
+  http: ^1.1.0
   intl: ^0.18.0
   firebase_core: ^2.30.0
   firebase_messaging: ^14.7.18
@@ -48,6 +48,7 @@ dependencies:
   js: ^0.6.7
   device_info_plus: ^10.1.0
   image_picker: ^1.0.4
+  image_cropper: ^9.1.0
   path_provider: ^2.0.15
   mime: ^1.0.4
   photo_view: ^0.14.0

@@ -1,8 +1,8 @@
 import 'package:cedar_roots/components/nav_bar.dart';
 import 'package:cedar_roots/screens/verification.dart';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:google_sign_in/google_sign_in.dart';
+// import 'package:shared_preferences/shared_preferences.dart';
+// import 'package:google_sign_in/google_sign_in.dart';
 // import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 // import 'package:flutter/foundation.dart'; // For Platform checks
 import 'package:cedar_roots/screens/login.dart';
@@ -19,7 +19,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
+  // final GoogleSignIn _googleSignIn = GoogleSignIn();
   bool _passwordVisible = false; // Variable to control password visibility
 
   void _showError(String message) {
@@ -77,25 +77,25 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   // Google Sign-Up function
-  Future<void> _googleSignUp(BuildContext context) async {
-    try {
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-      if (googleUser != null) {
-        // Save user data to shared preferences
-        SharedPreferences prefs = await SharedPreferences.getInstance();
-        prefs.setBool('is_logged_in', true);
-        prefs.setString('username', googleUser.displayName ?? "Google User");
+  // Future<void> _googleSignUp(BuildContext context) async {
+  //   try {
+  //     final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+  //     if (googleUser != null) {
+  //       // Save user data to shared preferences
+  //       SharedPreferences prefs = await SharedPreferences.getInstance();
+  //       prefs.setBool('is_logged_in', true);
+  //       prefs.setString('username', googleUser.displayName ?? "Google User");
 
-        // Navigate to home screen after successful sign-up
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => NavBar()),
-        );
-      }
-    } catch (error) {
-      print("Google sign-up failed: $error");
-    }
-  }
+  //       // Navigate to home screen after successful sign-up
+  //       Navigator.pushReplacement(
+  //         context,
+  //         MaterialPageRoute(builder: (context) => NavBar()),
+  //       );
+  //     }
+  //   } catch (error) {
+  //     print("Google sign-up failed: $error");
+  //   }
+  // }
 
   // Apple Sign-Up function
   // Future<void> _appleSignUp(BuildContext context) async {
@@ -179,11 +179,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ),
             SizedBox(height: 20),
             // Google Sign-Up button (for all devices)
-            ElevatedButton(
-              onPressed: () => _googleSignUp(context),
-              child: Text('Sign Up with Google'),
-            ),
-            SizedBox(height: 20),
+            // ElevatedButton(
+            //   onPressed: () => _googleSignUp(context),
+            //   child: Text('Sign Up with Google'),
+            // ),
+            // SizedBox(height: 20),
             // Apple Sign-Up button only on Apple devices (iOS/macOS)
             // if (defaultTargetPlatform == TargetPlatform.iOS ||
             //     defaultTargetPlatform == TargetPlatform.macOS)

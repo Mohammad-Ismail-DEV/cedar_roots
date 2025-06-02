@@ -1,5 +1,5 @@
-
 import 'package:flutter/material.dart';
+import 'dart:convert';
 
 class UserInfoHeader extends StatelessWidget {
   final String name;
@@ -40,10 +40,20 @@ class UserInfoHeader extends StatelessWidget {
             onTap: onProfileImageTap,
             child: CircleAvatar(
               radius: 36,
-              backgroundImage: profilePicUrl.isNotEmpty
-                  ? NetworkImage(profilePicUrl)
-                  : null,
-              child: profilePicUrl.isEmpty ? const Icon(Icons.person, size: 40) : null,
+              backgroundImage:
+                  profilePicUrl.isNotEmpty
+                      ? (profilePicUrl.startsWith("data:image/")
+                          ? MemoryImage(
+                            const Base64Decoder().convert(
+                              profilePicUrl.split(',').last,
+                            ),
+                          )
+                          : NetworkImage(profilePicUrl) as ImageProvider)
+                      : null,
+              child:
+                  profilePicUrl.isEmpty
+                      ? const Icon(Icons.person, size: 40)
+                      : null,
             ),
           ),
           const SizedBox(width: 16),
@@ -51,16 +61,31 @@ class UserInfoHeader extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(name, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                Text(
+                  name,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
                 InkWell(
                   onTap: onConnectionsTap,
                   child: Container(
                     margin: const EdgeInsets.only(top: 4),
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(8),
-                      boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 3))],
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black12,
+                          blurRadius: 6,
+                          offset: Offset(0, 3),
+                        ),
+                      ],
                     ),
                     child: Text(
                       "${_formatCount(connectionsCount)} connections",
@@ -79,13 +104,19 @@ class UserInfoHeader extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   shape: BoxShape.circle,
-                  boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 3))],
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black12,
+                      blurRadius: 6,
+                      offset: Offset(0, 3),
+                    ),
+                  ],
                 ),
                 child: const Icon(Icons.settings, color: Colors.black87),
               ),
             )
-          else
-            if (actionButton != null) actionButton!,
+          else if (actionButton != null)
+            actionButton!,
         ],
       ),
     );

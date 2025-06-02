@@ -5,6 +5,8 @@ import 'dart:convert';
 import 'profile.dart';
 import 'login.dart';
 import 'dart:async';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
 
 class ConnectionsScreen extends StatefulWidget {
   final int userId;
@@ -58,17 +60,20 @@ class _ConnectionsScreenState extends State<ConnectionsScreen>
     _loadUserAndConnections();
   }
 
+  ModalRoute? _route;
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    ModalRoute.of(context)?.navigator?.widget.observers
-        .whereType<RouteObserver>()
-        .forEach((obs) => obs.subscribe(this, ModalRoute.of(context)!));
+    _route ??= ModalRoute.of(context);
+    _route?.navigator?.widget.observers.whereType<RouteObserver>().forEach(
+      (obs) => obs.subscribe(this, _route!),
+    );
   }
 
   @override
   void didPopNext() {
-    _fetchConnections();
+    if (mounted) _fetchConnections();
   }
 
   @override
@@ -78,14 +83,17 @@ class _ConnectionsScreenState extends State<ConnectionsScreen>
     _requestsSearchController.dispose();
     _debounce?.cancel();
     _requestsDebounce?.cancel();
-    ModalRoute.of(context)?.navigator?.widget.observers
-        .whereType<RouteObserver>()
-        .forEach((obs) => obs.unsubscribe(this));
+
+    _route?.navigator?.widget.observers.whereType<RouteObserver>().forEach(
+      (obs) => obs.unsubscribe(this),
+    );
+
     super.dispose();
   }
 
   Future<void> _loadUserAndConnections() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
     bool isLoggedIn = prefs.getBool('is_logged_in') ?? false;
 
     if (!isLoggedIn) {
@@ -114,14 +122,66 @@ class _ConnectionsScreenState extends State<ConnectionsScreen>
       });
       return;
     }
-    setState(() {
-      checkingLogin = false;
-    });
+
+    if (mounted) {
+      setState(() => checkingLogin = false);
+    }
+
     await _fetchConnections();
+  }
+
+  Future<String> _getCacheFilePath() async {
+    final dir = await getApplicationDocumentsDirectory();
+    return '${dir.path}/cached_connections.json';
+  }
+
+  Future<void> _saveConnectionsToFile(
+    Map<String, List<Map<String, dynamic>>> data,
+  ) async {
+    final filePath = await _getCacheFilePath();
+    final file = File(filePath);
+    await file.writeAsString(jsonEncode(data));
+  }
+
+  Future<Map<String, List<Map<String, dynamic>>>>
+  _loadConnectionsFromFile() async {
+    try {
+      final filePath = await _getCacheFilePath();
+      final file = File(filePath);
+      if (await file.exists()) {
+        final contents = await file.readAsString();
+        final decoded = jsonDecode(contents);
+        return {
+          'accepted': List<Map<String, dynamic>>.from(
+            decoded['accepted'] ?? [],
+          ),
+          'requests': List<Map<String, dynamic>>.from(
+            decoded['requests'] ?? [],
+          ),
+          'outgoing': List<Map<String, dynamic>>.from(
+            decoded['outgoing'] ?? [],
+          ),
+        };
+      }
+    } catch (e) {
+      print("❌ Error loading connection cache: $e");
+    }
+    return {'accepted': [], 'requests': [], 'outgoing': []};
   }
 
   Future<void> _fetchConnections() async {
     if (!mounted) return;
+
+    // Load from cache first
+    final cached = await _loadConnectionsFromFile();
+    if (mounted) {
+      setState(() {
+        connections = cached['accepted'] ?? [];
+        requests = cached['requests'] ?? [];
+        outgoingRequests = cached['outgoing'] ?? [];
+      });
+    }
+
     setState(() {
       loadingConnections = true;
       loadingRequests = true;
@@ -129,32 +189,44 @@ class _ConnectionsScreenState extends State<ConnectionsScreen>
 
     try {
       final res = await ApiServices().fetchUserConnections(widget.userId);
-      if (res.statusCode == 200 && mounted) {
+      if (!mounted) return;
+
+      if (res.statusCode == 200) {
         final data = json.decode(res.body);
-        if (mounted) {
-          setState(() {
-            connections = List<Map<String, dynamic>>.from(
-              data['accepted'] ?? [],
-            );
-            requests = List<Map<String, dynamic>>.from(data['requests'] ?? []);
-            outgoingRequests = List<Map<String, dynamic>>.from(
-              data['outgoing'] ?? [],
-            );
-            loadingConnections = false;
-            loadingRequests = false;
-          });
-        }
+
+        if (!mounted) return;
+        final accepted = List<Map<String, dynamic>>.from(
+          data['accepted'] ?? [],
+        );
+        final reqs = List<Map<String, dynamic>>.from(data['requests'] ?? []);
+        final outgoing = List<Map<String, dynamic>>.from(
+          data['outgoing'] ?? [],
+        );
+
+        setState(() {
+          connections = accepted;
+          requests = reqs;
+          outgoingRequests = outgoing;
+          loadingConnections = false;
+          loadingRequests = false;
+        });
+
+        // Save to file
+        await _saveConnectionsToFile({
+          'accepted': accepted,
+          'requests': reqs,
+          'outgoing': outgoing,
+        });
       } else {
         throw Exception('Failed to fetch connections');
       }
     } catch (e) {
       print('❌ Error fetching connections: $e');
-      if (mounted) {
-        setState(() {
-          loadingConnections = false;
-          loadingRequests = false;
-        });
-      }
+      if (!mounted) return;
+      setState(() {
+        loadingConnections = false;
+        loadingRequests = false;
+      });
     }
   }
 
@@ -165,10 +237,12 @@ class _ConnectionsScreenState extends State<ConnectionsScreen>
       if (query.isNotEmpty) {
         _fetchUserSuggestions(query);
       } else {
-        setState(() {
-          _showSuggestions = false;
-          _searchSuggestions = [];
-        });
+        if (mounted) {
+          setState(() {
+            _showSuggestions = false;
+            _searchSuggestions = [];
+          });
+        }
       }
     });
   }
@@ -176,6 +250,7 @@ class _ConnectionsScreenState extends State<ConnectionsScreen>
   Future<void> _fetchUserSuggestions(String query) async {
     try {
       final res = await ApiServices().searchUsersByName(query);
+      if (!mounted) return;
       if (res.statusCode == 200 && mounted) {
         final data = json.decode(res.body) as List<dynamic>;
         final fetched = List<Map<String, dynamic>>.from(data);
@@ -189,6 +264,7 @@ class _ConnectionsScreenState extends State<ConnectionsScreen>
 
         final filtered =
             fetched.where((u) => !connectionIds.contains(u['id'])).toList();
+
         if (mounted) {
           setState(() {
             _searchSuggestions = filtered;
@@ -208,10 +284,12 @@ class _ConnectionsScreenState extends State<ConnectionsScreen>
       if (query.isNotEmpty) {
         _fetchRequestSuggestions(query);
       } else {
-        setState(() {
-          _requestSuggestions = [];
-          _showRequestSuggestions = false;
-        });
+        if (mounted) {
+          setState(() {
+            _requestSuggestions = [];
+            _showRequestSuggestions = false;
+          });
+        }
       }
     });
   }
@@ -219,6 +297,7 @@ class _ConnectionsScreenState extends State<ConnectionsScreen>
   Future<void> _fetchRequestSuggestions(String query) async {
     try {
       final res = await ApiServices().searchUsersByName(query);
+      if (!mounted) return;
       if (res.statusCode == 200 && mounted) {
         final data = json.decode(res.body) as List<dynamic>;
         final fetched = List<Map<String, dynamic>>.from(data);
@@ -260,6 +339,7 @@ class _ConnectionsScreenState extends State<ConnectionsScreen>
       'accept': accept,
     });
 
+    if (!mounted) return;
     if (res.statusCode == 200 && mounted) {
       await _fetchConnections();
     } else {
@@ -274,8 +354,11 @@ class _ConnectionsScreenState extends State<ConnectionsScreen>
             : connection['Sender'];
     return ListTile(
       leading:
-          user['profile_pic'] != null && user['profile_pic'].isNotEmpty
-              ? CircleAvatar(backgroundImage: NetworkImage(user['profile_pic']))
+          user['profile_pic_blob'] != null &&
+                  user['profile_pic_blob'].isNotEmpty
+              ? CircleAvatar(
+                backgroundImage: NetworkImage(user['profile_pic_blob']),
+              )
               : CircleAvatar(
                 backgroundColor: Colors.green,
                 child: Text(
@@ -331,8 +414,17 @@ class _ConnectionsScreenState extends State<ConnectionsScreen>
 
     return ListTile(
       leading:
-          user['profile_pic'] != null && user['profile_pic'].isNotEmpty
-              ? CircleAvatar(backgroundImage: NetworkImage(user['profile_pic']))
+          user['profile_pic_blob'] != null &&
+                  user['profile_pic_blob'].isNotEmpty
+              ? CircleAvatar(
+                backgroundImage: MemoryImage(
+                  base64Decode(
+                    user['profile_pic_blob'].contains(',')
+                        ? user['profile_pic_blob'].split(',').last
+                        : user['profile_pic_blob'],
+                  ),
+                ),
+              )
               : CircleAvatar(
                 backgroundColor: Colors.grey,
                 child: Text(
@@ -469,12 +561,19 @@ class _ConnectionsScreenState extends State<ConnectionsScreen>
                                     ..._searchSuggestions.map(
                                       (user) => ListTile(
                                         leading:
-                                            user['profile_pic'] != null &&
-                                                    user['profile_pic']
+                                            user['profile_pic_blob'] != null &&
+                                                    user['profile_pic_blob']
                                                         .isNotEmpty
                                                 ? CircleAvatar(
-                                                  backgroundImage: NetworkImage(
-                                                    user['profile_pic'],
+                                                  backgroundImage: MemoryImage(
+                                                    base64Decode(
+                                                      user['profile_pic_blob']
+                                                              .contains(',')
+                                                          ? user['profile_pic_blob']
+                                                              .split(',')
+                                                              .last
+                                                          : user['profile_pic_blob'],
+                                                    ),
                                                   ),
                                                 )
                                                 : CircleAvatar(
@@ -482,7 +581,7 @@ class _ConnectionsScreenState extends State<ConnectionsScreen>
                                                   child: Text(
                                                     user['name'][0]
                                                         .toUpperCase(),
-                                                    style: TextStyle(
+                                                    style: const TextStyle(
                                                       color: Colors.white,
                                                     ),
                                                   ),
@@ -658,12 +757,19 @@ class _ConnectionsScreenState extends State<ConnectionsScreen>
                                     ..._requestSuggestions.map(
                                       (user) => ListTile(
                                         leading:
-                                            user['profile_pic'] != null &&
-                                                    user['profile_pic']
+                                            user['profile_pic_blob'] != null &&
+                                                    user['profile_pic_blob']
                                                         .isNotEmpty
                                                 ? CircleAvatar(
-                                                  backgroundImage: NetworkImage(
-                                                    user['profile_pic'],
+                                                  backgroundImage: MemoryImage(
+                                                    base64Decode(
+                                                      user['profile_pic_blob']
+                                                              .contains(',')
+                                                          ? user['profile_pic_blob']
+                                                              .split(',')
+                                                              .last
+                                                          : user['profile_pic_blob'],
+                                                    ),
                                                   ),
                                                 )
                                                 : CircleAvatar(

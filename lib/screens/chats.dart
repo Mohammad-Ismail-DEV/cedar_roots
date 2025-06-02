@@ -5,6 +5,9 @@ import 'package:cedar_roots/screens/group_chat.dart';
 import 'package:cedar_roots/screens/connections.dart';
 import 'package:cedar_roots/services/socket_service.dart';
 import 'package:cedar_roots/components/chat_list_tile.dart';
+import 'dart:io';
+import 'dart:convert';
+import 'package:path_provider/path_provider.dart';
 
 class ChatsScreen extends StatefulWidget {
   @override
@@ -23,19 +26,57 @@ class _ChatsScreenState extends State<ChatsScreen> {
     _initializePreferences();
     _socketService.socket.on('receive_message', (_) => _fetchMessages());
     _socketService.socket.on('receive_group_message', (_) => _fetchMessages());
-    _socketService.socket.on('fetched_user_messages', (data) {
+    _socketService.socket.on('fetched_user_messages', (data) async {
       if (!mounted) return;
       if (data is List) {
-        setState(() {
-          conversations = List<Map<String, dynamic>>.from(data);
-        });
+        final parsed = List<Map<String, dynamic>>.from(data);
+        setState(() => conversations = parsed);
+        await _saveChatsToFile(parsed);
       }
     });
+  }
+
+  Future<String> _getChatCachePath() async {
+    final dir = await getApplicationDocumentsDirectory();
+    return '${dir.path}/cached_conversations.json';
+  }
+
+  Future<void> _saveChatsToFile(List<Map<String, dynamic>> chats) async {
+    try {
+      final path = await _getChatCachePath();
+      final file = File(path);
+      await file.writeAsString(jsonEncode(chats));
+    } catch (e) {
+      print('❌ Error saving chats to file: $e');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> _loadChatsFromFile() async {
+    try {
+      final path = await _getChatCachePath();
+      final file = File(path);
+      if (await file.exists()) {
+        final contents = await file.readAsString();
+        final decoded = jsonDecode(contents);
+        return List<Map<String, dynamic>>.from(decoded);
+      }
+    } catch (e) {
+      print('❌ Error loading chats from file: $e');
+    }
+    return [];
   }
 
   Future<void> _initializePreferences() async {
     prefs = await SharedPreferences.getInstance();
     currentUserId = prefs.getInt("user_id") ?? 0;
+
+    // Load from cache first
+    final cached = await _loadChatsFromFile();
+    if (mounted) {
+      setState(() => conversations = cached);
+    }
+
+    // Then fetch fresh data via socket
     await _fetchMessages();
   }
 
@@ -138,7 +179,9 @@ class _ChatsScreenState extends State<ChatsScreen> {
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => ConnectionsScreen(userId:currentUserId)),
+                    MaterialPageRoute(
+                      builder: (_) => ConnectionsScreen(userId: currentUserId),
+                    ),
                   );
                 },
                 child: const Icon(Icons.chat, size: 30, color: Colors.white),

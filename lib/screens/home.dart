@@ -2,7 +2,9 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:cedar_roots/screens/create_post.dart';
 import 'package:cedar_roots/screens/organization.dart';
+import 'package:cedar_roots/screens/post_details.dart';
 import 'package:cedar_roots/screens/profile.dart';
+import 'package:cedar_roots/utils/keep_alive_wrapper.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
@@ -13,6 +15,8 @@ import 'package:cedar_roots/screens/chats.dart';
 import 'package:cedar_roots/screens/event_details.dart';
 import 'package:cedar_roots/services/api_service.dart';
 import 'package:cedar_roots/services/firebase_service.dart';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
 
 class HomeScreen extends StatefulWidget {
   @override
@@ -36,7 +40,7 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _checkLoginStatus();
     _initFirebase();
-    _fetchFeed();
+    _loadCachedFeed().then((_) => _fetchFeed()); // Load cache first
   }
 
   @override
@@ -69,12 +73,10 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _fetchFeed() async {
-    setState(() => _loading = true);
-
     try {
       await api.init();
-      await api.init();
-      final userId = _currentUserId; // Use from prefs or auth
+      final userId = _currentUserId;
+
       final posts = await api.fetchPosts(userId);
       final events = await api.fetchEvents(userId);
 
@@ -92,13 +94,11 @@ class _HomeScreenState extends State<HomeScreen> {
       if (!mounted) return;
       setState(() {
         _feed = allItems;
-        _searchResults = [];
-        _loading = false;
       });
+
+      await _saveFeedToFile(allItems); // Save to file
     } catch (e) {
       print('❌ Error fetching feed: $e');
-      if (!mounted) return;
-      setState(() => _loading = false);
     }
   }
 
@@ -147,6 +147,18 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Future<void> _loadCachedFeed() async {
+    final cachedFeed = await _loadFeedFromFile();
+    if (mounted && cachedFeed.isNotEmpty) {
+      setState(() {
+        _feed = cachedFeed;
+        _loading = false;
+      });
+    } else {
+      setState(() => _loading = false);
+    }
+  }
+
   Widget _buildSearchOverlay() {
     if (!_showSearchOverlay) return const SizedBox.shrink();
 
@@ -162,213 +174,230 @@ class _HomeScreenState extends State<HomeScreen> {
       left: 12,
       right: 12,
       top: 72,
-      child: Card(
-        elevation: 6,
-        color: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          child:
-              isEmpty
-                  ? const Padding(
-                    padding: EdgeInsets.all(16),
-                    child: Center(
-                      child: Text(
-                        "No results found.",
-                        style: TextStyle(color: Colors.grey),
+      child: SizedBox(
+        height: MediaQuery.of(context).size.height * 0.6, // adjust as needed
+        child: Card(
+          elevation: 6,
+          color: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child:
+                isEmpty
+                    ? const Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Center(
+                        child: Text(
+                          "No results found.",
+                          style: TextStyle(color: Colors.grey),
+                        ),
+                      ),
+                    )
+                    : SingleChildScrollView(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (users.isNotEmpty) ...[
+                            const Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 4,
+                              ),
+                              child: Align(
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  "Users",
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ),
+                            ...users.map(
+                              (u) => ListTile(
+                                leading: CircleAvatar(
+                                  backgroundImage:
+                                      u['profile_pic'] != null
+                                          ? NetworkImage(u['profile_pic'])
+                                          : null,
+                                  child:
+                                      u['profile_pic'] == null
+                                          ? Text(u['name'][0])
+                                          : null,
+                                ),
+                                title: Text(u['name']),
+                                onTap: () async {
+                                  // Refocus the search input
+                                  FocusScope.of(
+                                    context,
+                                  ).requestFocus(FocusNode());
+
+                                  // Optional: clear input and results
+                                  //_searchController.clear();
+                                  //setState(() {
+                                  //  _searchResults = [];
+                                  //  _showSearchOverlay = false;
+                                  //});
+
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder:
+                                          (_) => ProfileScreen(
+                                            userId: u['id'],
+                                            isCurrentUser: false,
+                                          ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
+                          if (orgs.isNotEmpty) ...[
+                            const Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 4,
+                              ),
+                              child: Align(
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  "Organizations",
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ),
+                            ...orgs.map(
+                              (o) => ListTile(
+                                leading: CircleAvatar(
+                                  backgroundImage:
+                                      o['logo'] != null
+                                          ? NetworkImage(o['logo'])
+                                          : null,
+                                  child:
+                                      o['logo'] == null
+                                          ? Text(o['name'][0])
+                                          : null,
+                                ),
+                                title: Text(o['name']),
+                                onTap: () async {
+                                  FocusScope.of(
+                                    context,
+                                  ).requestFocus(FocusNode());
+
+                                  // Optional clear
+                                  //_searchController.clear();
+                                  //setState(() {
+                                  //  _searchResults = [];
+                                  //  _showSearchOverlay = false;
+                                  //});
+
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder:
+                                          (_) => OrganizationScreen(
+                                            organizationId: o['id'],
+                                          ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
+                          if (events.isNotEmpty) ...[
+                            const Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 4,
+                              ),
+                              child: Align(
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  "Events",
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ),
+                            ...events.map(
+                              (e) => ListTile(
+                                leading: const Icon(Icons.event),
+                                title: Text(e['title'] ?? ''),
+                                onTap: () async {
+                                  FocusScope.of(
+                                    context,
+                                  ).requestFocus(FocusNode());
+
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder:
+                                          (_) => EventDetailsScreen(
+                                            userId: _currentUserId ?? 0,
+                                            eventId: e['id'],
+                                          ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
+                          if (posts.isNotEmpty) ...[
+                            const Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 4,
+                              ),
+                              child: Align(
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  "Posts",
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ),
+                            ...posts.map(
+                              (p) => ListTile(
+                                leading: CircleAvatar(
+                                  backgroundImage:
+                                      p['image_url'] != null
+                                          ? NetworkImage(p['image_url'])
+                                          : null,
+                                  child:
+                                      p['image_url'] == null
+                                          ? const Icon(Icons.post_add)
+                                          : null,
+                                ),
+                                title: Text(
+                                  (p['content'] ?? '')
+                                      .toString()
+                                      .split('\n')
+                                      .first,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                onTap: () async {
+                                  FocusScope.of(
+                                    context,
+                                  ).requestFocus(FocusNode());
+
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder:
+                                          (_) => PostDetailsScreen(
+                                            userId: _currentUserId ?? 0,
+                                            postId: p['id'],
+                                          ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ),
-                  )
-                  : SingleChildScrollView(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (users.isNotEmpty) ...[
-                          const Padding(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 4,
-                            ),
-                            child: Align(
-                              alignment: Alignment.centerLeft,
-                              child: Text(
-                                "Users",
-                                style: TextStyle(fontWeight: FontWeight.bold),
-                              ),
-                            ),
-                          ),
-                          ...users.map(
-                            (u) => ListTile(
-                              leading: CircleAvatar(
-                                backgroundImage:
-                                    u['profile_pic'] != null
-                                        ? NetworkImage(u['profile_pic'])
-                                        : null,
-                                child:
-                                    u['profile_pic'] == null
-                                        ? Text(u['name'][0])
-                                        : null,
-                              ),
-                              title: Text(u['name']),
-                              onTap: () async {
-                                // Refocus the search input
-                                FocusScope.of(
-                                  context,
-                                ).requestFocus(FocusNode());
-
-                                // Optional: clear input and results
-                                //_searchController.clear();
-                                //setState(() {
-                                //  _searchResults = [];
-                                //  _showSearchOverlay = false;
-                                //});
-
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder:
-                                        (_) => ProfileScreen(userId: u['id']),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                        ],
-                        if (orgs.isNotEmpty) ...[
-                          const Padding(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 4,
-                            ),
-                            child: Align(
-                              alignment: Alignment.centerLeft,
-                              child: Text(
-                                "Organizations",
-                                style: TextStyle(fontWeight: FontWeight.bold),
-                              ),
-                            ),
-                          ),
-                          ...orgs.map(
-                            (o) => ListTile(
-                              leading: CircleAvatar(
-                                backgroundImage:
-                                    o['logo'] != null
-                                        ? NetworkImage(o['logo'])
-                                        : null,
-                                child:
-                                    o['logo'] == null
-                                        ? Text(o['name'][0])
-                                        : null,
-                              ),
-                              title: Text(o['name']),
-                              onTap: () async {
-                                FocusScope.of(
-                                  context,
-                                ).requestFocus(FocusNode());
-
-                                // Optional clear
-                                //_searchController.clear();
-                                //setState(() {
-                                //  _searchResults = [];
-                                //  _showSearchOverlay = false;
-                                //});
-
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder:
-                                        (_) => OrganizationScreen(
-                                          organizationId: o['id'],
-                                        ),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                        ],
-                        if (events.isNotEmpty) ...[
-                          const Padding(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 4,
-                            ),
-                            child: Align(
-                              alignment: Alignment.centerLeft,
-                              child: Text(
-                                "Events",
-                                style: TextStyle(fontWeight: FontWeight.bold),
-                              ),
-                            ),
-                          ),
-                          ...events.map(
-                            (e) => ListTile(
-                              leading: const Icon(Icons.event),
-                              title: Text(e['title'] ?? ''),
-                              onTap: () async {
-                                FocusScope.of(
-                                  context,
-                                ).requestFocus(FocusNode());
-
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder:
-                                        (_) => EventDetailsScreen(
-                                          userId: _currentUserId ?? 0,
-                                          eventId: e['id'],
-                                        ),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                        ],
-                        if (posts.isNotEmpty) ...[
-                          const Padding(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 4,
-                            ),
-                            child: Align(
-                              alignment: Alignment.centerLeft,
-                              child: Text(
-                                "Posts",
-                                style: TextStyle(fontWeight: FontWeight.bold),
-                              ),
-                            ),
-                          ),
-                          ...posts.map(
-                            (p) => ListTile(
-                              leading: CircleAvatar(
-                                backgroundImage:
-                                    p['image_url'] != null
-                                        ? NetworkImage(p['image_url'])
-                                        : null,
-                                child:
-                                    p['image_url'] == null
-                                        ? const Icon(Icons.post_add)
-                                        : null,
-                              ),
-                              title: Text(
-                                (p['content'] ?? '')
-                                    .toString()
-                                    .split('\n')
-                                    .first,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              onTap: () async {
-                                FocusScope.of(
-                                  context,
-                                ).requestFocus(FocusNode());
-
-                                // TODO: Navigate to PostDetailScreen(postId: p['id']);
-                              },
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
+          ),
         ),
       ),
     );
@@ -495,6 +524,32 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Future<String> _getCacheFilePath() async {
+    final dir = await getApplicationDocumentsDirectory();
+    return '${dir.path}/cached_feed.json';
+  }
+
+  Future<void> _saveFeedToFile(List<Map<String, dynamic>> feed) async {
+    final filePath = await _getCacheFilePath();
+    final file = File(filePath);
+    await file.writeAsString(jsonEncode(feed));
+  }
+
+  Future<List<Map<String, dynamic>>> _loadFeedFromFile() async {
+    try {
+      final filePath = await _getCacheFilePath();
+      final file = File(filePath);
+      if (await file.exists()) {
+        final contents = await file.readAsString();
+        final decoded = jsonDecode(contents);
+        return List<Map<String, dynamic>>.from(decoded);
+      }
+    } catch (e) {
+      print("❌ Error loading cache file: $e");
+    }
+    return [];
+  }
+
   @override
   Widget build(BuildContext context) {
     final list = _feed;
@@ -540,154 +595,193 @@ class _HomeScreenState extends State<HomeScreen> {
                 child:
                     _loading
                         ? const Center(child: CircularProgressIndicator())
-                        : list.isEmpty
-                        ? const Center(child: Text("No results found."))
                         : RefreshIndicator(
-                          onRefresh: _fetchFeed,
-                          child: ListView.builder(
-                            itemCount: list.length,
-                            itemBuilder: (context, index) {
-                              final item = list[index];
-                              final org = item['Organization'] ?? {};
-                              final orgName = org['name'] ?? 'Unknown';
-                              final orgLogo = org['logo'] ?? '';
-
-                              return item['type'] == 'event'
-                                  ? GestureDetector(
-                                    onTap: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder:
-                                              (_) => EventDetailsScreen(
-                                                userId: _currentUserId ?? 0,
-                                                eventId: item['id'],
-                                              ),
-                                        ),
-                                      );
-                                    },
-                                    child: Card(
-                                      color: Colors.white,
-                                      margin: const EdgeInsets.fromLTRB(
-                                        12,
-                                        1.5,
-                                        12,
-                                        1.5,
-                                      ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      child: Padding(
-                                        padding: const EdgeInsets.all(12),
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            // Organization Info
-                                            Row(
-                                              children: [
-                                                CircleAvatar(
-                                                  radius: 16,
-                                                  backgroundImage:
-                                                      orgLogo.isNotEmpty
-                                                          ? NetworkImage(
-                                                            orgLogo,
-                                                          )
-                                                          : null,
-                                                  backgroundColor:
-                                                      Colors.grey[300],
-                                                  child:
-                                                      orgLogo.isEmpty
-                                                          ? Text(
-                                                            orgName[0]
-                                                                .toUpperCase(),
-                                                            style: TextStyle(
-                                                              color:
-                                                                  Colors.white,
-                                                            ),
-                                                          )
-                                                          : null,
-                                                ),
-                                                const SizedBox(width: 8),
-                                                Text(
-                                                  orgName,
-                                                  style: const TextStyle(
-                                                    fontSize: 14,
-                                                    fontWeight: FontWeight.w500,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                            const SizedBox(height: 8),
-
-                                            // Event Title
-                                            Text(
-                                              item['title'] ?? '',
-                                              style: const TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 16,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 6),
-
-                                            // Time
-                                            Row(
-                                              children: [
-                                                const Icon(
-                                                  Icons.access_time,
-                                                  size: 16,
-                                                  color: Colors.orange,
-                                                ),
-                                                const SizedBox(width: 4),
-                                                Text(
-                                                  DateFormat(
-                                                    'MMM d, yyyy • hh:mm a',
-                                                  ).format(
-                                                    DateTime.tryParse(
-                                                          item['date_time'] ??
-                                                              '',
-                                                        ) ??
-                                                        DateTime.now(),
-                                                  ),
-                                                  style: const TextStyle(
-                                                    fontSize: 13,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-
-                                            // Location
-                                            if (item['location'] != null)
-                                              Text(
-                                                item['location'],
-                                                style: const TextStyle(
-                                                  fontSize: 13,
-                                                  color: Colors.grey,
-                                                ),
-                                              ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
+                          onRefresh: () async {
+                            FocusScope.of(context).unfocus();
+                            setState(() {
+                              _showSearchOverlay = false;
+                              _searchController.clear();
+                            });
+                            await _fetchFeed();
+                          },
+                          child:
+                              list.isEmpty
+                                  ? const Center(
+                                    child: Text("No results found."),
                                   )
-                                  : Padding(
-                                    padding: const EdgeInsets.fromLTRB(
-                                      12,
-                                      1.5,
-                                      12,
-                                      1.5,
-                                    ),
-                                    child: UserPost(
-                                      post: item,
-                                      currentUserId: _currentUserId ?? 0,
-                                      onEdit: handleEdit,
-                                      onDelete: handleDelete,
-                                      onComment: handleComment,
-                                      onLike: handleLike,
-                                    ),
-                                  );
-                            },
-                          ),
+                                  : ListView.builder(
+                                    itemCount: list.length,
+                                    itemBuilder: (context, index) {
+                                      final item = list[index];
+                                      final org = item['Organization'] ?? {};
+                                      final orgName = org['name'] ?? 'Unknown';
+                                      final orgLogoBlob = org['logo_blob'];
+
+                                      return item['type'] == 'event'
+                                          ? GestureDetector(
+                                            onTap: () {
+                                              Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder:
+                                                      (_) => EventDetailsScreen(
+                                                        userId:
+                                                            _currentUserId ?? 0,
+                                                        eventId: item['id'],
+                                                      ),
+                                                ),
+                                              );
+                                            },
+                                            child: Card(
+                                              color: Colors.white,
+                                              margin: const EdgeInsets.fromLTRB(
+                                                12,
+                                                1.5,
+                                                12,
+                                                1.5,
+                                              ),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                              ),
+                                              child: Padding(
+                                                padding: const EdgeInsets.all(
+                                                  12,
+                                                ),
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    // Organization Info
+                                                    Row(
+                                                      children: [
+                                                        CircleAvatar(
+                                                          radius: 16,
+                                                          backgroundColor:
+                                                              Colors.grey[300],
+                                                          backgroundImage:
+                                                              orgLogoBlob !=
+                                                                      null
+                                                                  ? MemoryImage(
+                                                                    base64Decode(
+                                                                      orgLogoBlob
+                                                                          .split(
+                                                                            ',',
+                                                                          )
+                                                                          .last,
+                                                                    ),
+                                                                  )
+                                                                  : null,
+                                                          child:
+                                                              orgLogoBlob ==
+                                                                      null
+                                                                  ? Text(
+                                                                    orgName.isNotEmpty
+                                                                        ? orgName[0]
+                                                                            .toUpperCase()
+                                                                        : '?',
+                                                                    style: const TextStyle(
+                                                                      color:
+                                                                          Colors
+                                                                              .white,
+                                                                    ),
+                                                                  )
+                                                                  : null,
+                                                        ),
+
+                                                        const SizedBox(
+                                                          width: 8,
+                                                        ),
+                                                        Text(
+                                                          orgName,
+                                                          style:
+                                                              const TextStyle(
+                                                                fontSize: 14,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w500,
+                                                              ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                    const SizedBox(height: 8),
+
+                                                    // Event Title
+                                                    Text(
+                                                      item['title'] ?? '',
+                                                      style: const TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        fontSize: 16,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(height: 6),
+
+                                                    // Time
+                                                    Row(
+                                                      children: [
+                                                        const Icon(
+                                                          Icons.access_time,
+                                                          size: 16,
+                                                          color: Colors.orange,
+                                                        ),
+                                                        const SizedBox(
+                                                          width: 4,
+                                                        ),
+                                                        Text(
+                                                          DateFormat(
+                                                            'MMM d, yyyy • hh:mm a',
+                                                          ).format(
+                                                            DateTime.tryParse(
+                                                                  item['date_time'] ??
+                                                                      '',
+                                                                ) ??
+                                                                DateTime.now(),
+                                                          ),
+                                                          style:
+                                                              const TextStyle(
+                                                                fontSize: 13,
+                                                              ),
+                                                        ),
+                                                      ],
+                                                    ),
+
+                                                    // Location
+                                                    if (item['location'] !=
+                                                        null)
+                                                      Text(
+                                                        item['location'],
+                                                        style: const TextStyle(
+                                                          fontSize: 13,
+                                                          color: Colors.grey,
+                                                        ),
+                                                      ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                          )
+                                          : Padding(
+                                            padding: const EdgeInsets.fromLTRB(
+                                              12,
+                                              1.5,
+                                              12,
+                                              1.5,
+                                            ),
+                                            child: KeepAliveWrapper(
+                                              child: UserPost(
+                                                post: item,
+                                                currentUserId:
+                                                    _currentUserId ?? 0,
+                                                onEdit: handleEdit,
+                                                onDelete: handleDelete,
+                                                onComment: handleComment,
+                                                onLike: handleLike,
+                                              ),
+                                            ),
+                                          );
+                                    },
+                                  ),
                         ),
               ),
             ],

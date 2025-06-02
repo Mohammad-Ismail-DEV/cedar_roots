@@ -6,6 +6,7 @@ import 'package:cedar_roots/screens/organizations.dart';
 import 'package:cedar_roots/services/api_service.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:image_cropper/image_cropper.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'package:cedar_roots/screens/login.dart';
@@ -31,6 +32,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _isLoading = true;
   String _name = "User";
   String _profilePicUrl = "";
+  String _profilePicBlob = "";
   int _connectionsCount = 0;
   String _connectionStatus = "none";
   List<dynamic> _posts = [];
@@ -112,11 +114,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
         final connCountData = jsonDecode(connCountRes.body);
 
         setState(() {
-          print("User data: $userData");
           _name = userData['name'] ?? "User";
           _profilePicUrl = userData['profile_pic'] ?? "";
+          _profilePicBlob = userData['profile_pic_blob'] ?? "";
           _connectionsCount = connCountData['count'] ?? 0;
           _connectionStatus = status;
+          _isLoading = false; // ✅ User info is now ready
         });
         await _fetchUserPosts(userId, token);
       }
@@ -444,7 +447,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => OrganizationsScreen(userId: widget.userId ?? 1),
+              builder: (_) => OrganizationsScreen(userId: widget.userId ?? 0),
             ), // change id as needed
           );
         },
@@ -488,7 +491,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         children: [
           UserInfoHeader(
             name: _name,
-            profilePicUrl: _profilePicUrl,
+            profilePicUrl: _profilePicBlob, // show blob as default avatar
             connectionsCount: _connectionsCount,
             isCurrentUser: widget.isCurrentUser,
             onConnectionsTap: () {
@@ -506,7 +509,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       MaterialPageRoute(builder: (_) => SettingsScreen()),
                     )
                     : null,
-            onProfileImageTap: _showImagePreview,
+            onProfileImageTap:
+                _showImagePreview, // this still shows the full URL image
             actionButton: null,
           ),
           if (!widget.isCurrentUser)
@@ -646,18 +650,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final pickedFile = await picker.pickImage(source: ImageSource.gallery);
     if (pickedFile == null) return;
 
-    final file = File(pickedFile.path);
+    // Crop the image to 1:1
+    final croppedFile = await ImageCropper().cropImage(
+      sourcePath: pickedFile.path,
+      aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
+      compressFormat: ImageCompressFormat.jpg,
+      compressQuality: 90,
+      uiSettings: [
+        AndroidUiSettings(
+          toolbarTitle: 'Crop Image',
+          toolbarColor: Colors.blue,
+          toolbarWidgetColor: Colors.white,
+          lockAspectRatio: true,
+        ),
+        IOSUiSettings(title: 'Crop Image', aspectRatioLockEnabled: true),
+      ],
+    );
+
+    if (croppedFile == null) return;
+
+    final file = File(croppedFile.path);
+
     final uri = Uri.parse('http://13.50.2.82:3000/upload');
     final request = http.MultipartRequest('POST', uri);
     request.files.add(await http.MultipartFile.fromPath('file', file.path));
+
     final response = await request.send();
 
     if (response.statusCode == 200) {
       final responseBody = await response.stream.bytesToString();
       final data = jsonDecode(responseBody);
-      _updateProfilePicture(data['url']);
+      _updateProfilePicture(data['url']); // Call your existing update logic
     } else {
-      print('Upload failed');
+      print('❌ Upload failed with status: ${response.statusCode}');
     }
   }
 

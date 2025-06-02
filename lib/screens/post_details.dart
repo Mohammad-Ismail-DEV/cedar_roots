@@ -30,30 +30,41 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
     _fetchPostDetails();
   }
 
+  @override
+  void dispose() {
+    _commentController.dispose();
+    super.dispose();
+  }
+
   Future<void> _fetchPostDetails() async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('auth_token');
 
-    final res = await http.get(
-      Uri.parse('http://13.50.2.82:3000/posts/${widget.postId}'),
-      headers: {'Authorization': 'Bearer $token'},
-    );
+    try {
+      final res = await http.get(
+        Uri.parse('http://13.50.2.82:3000/posts/${widget.postId}'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
 
-    final commentsRes = await http.get(
-      Uri.parse('http://13.50.2.82:3000/comments/post/${widget.postId}'),
-      headers: {'Authorization': 'Bearer $token'},
-    );
+      final commentsRes = await http.get(
+        Uri.parse('http://13.50.2.82:3000/comments/post/${widget.postId}'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
 
-    if (res.statusCode == 200 && commentsRes.statusCode == 200) {
-      final data = json.decode(res.body);
-      final commentList = json.decode(commentsRes.body);
+      if (res.statusCode == 200 && commentsRes.statusCode == 200) {
+        final data = json.decode(res.body);
+        final commentList = json.decode(commentsRes.body);
 
-      setState(() {
-        post = data;
-        comments = commentList;
-        isLiked =
-            data['Likes']?.any((l) => l['user_id'] == widget.userId) ?? false;
-      });
+        if (!mounted) return;
+        setState(() {
+          post = data;
+          comments = commentList;
+          isLiked =
+              data['Likes']?.any((l) => l['user_id'] == widget.userId) ?? false;
+        });
+      }
+    } catch (e) {
+      print('❌ Error fetching post details: $e');
     }
   }
 
@@ -61,13 +72,17 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('auth_token');
 
-    final res = await http.post(
-      Uri.parse('http://13.50.2.82:3000/posts/${widget.postId}/like'),
-      headers: {'Authorization': 'Bearer $token'},
-    );
+    try {
+      final res = await http.post(
+        Uri.parse('http://13.50.2.82:3000/posts/${widget.postId}/like'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
 
-    if (res.statusCode == 200) {
-      _fetchPostDetails();
+      if (res.statusCode == 200) {
+        _fetchPostDetails();
+      }
+    } catch (e) {
+      print('❌ Error toggling like: $e');
     }
   }
 
@@ -78,18 +93,23 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('auth_token');
 
-    final res = await http.post(
-      Uri.parse('http://13.50.2.82:3000/comments'),
-      headers: {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode({'post_id': widget.postId, 'content': content}),
-    );
+    try {
+      final res = await http.post(
+        Uri.parse('http://13.50.2.82:3000/comments'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({'post_id': widget.postId, 'content': content}),
+      );
 
-    if (res.statusCode == 200) {
-      _commentController.clear();
-      _fetchPostDetails();
+      if (res.statusCode == 200) {
+        if (!mounted) return;
+        _commentController.clear();
+        _fetchPostDetails();
+      }
+    } catch (e) {
+      print('❌ Error adding comment: $e');
     }
   }
 
@@ -113,87 +133,92 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text("Post Details")),
-      body: RefreshIndicator(
-        onRefresh: _fetchPostDetails,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            Row(
-              children: [
-                CircleAvatar(
-                  backgroundImage:
-                      profilePic != null ? NetworkImage(profilePic) : null,
-                  child: profilePic == null ? Text(name[0]) : null,
-                ),
-                const SizedBox(width: 8),
-                Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
-              ],
-            ),
-            const SizedBox(height: 16),
-            if (post!['image_url'] != null &&
-                post!['image_url'].toString().isNotEmpty)
-              Image.network(post!['image_url'], fit: BoxFit.cover),
-            const SizedBox(height: 12),
-            Text(post!['content'] ?? ''),
-            const SizedBox(height: 8),
-            Text(
-              _formatDate(post!['created_at']),
-              style: const TextStyle(color: Colors.grey),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                IconButton(
-                  onPressed: _toggleLike,
-                  icon: Icon(
-                    isLiked ? Icons.favorite : Icons.favorite_border,
-                    color: isLiked ? Colors.red : Colors.grey,
+      body: GestureDetector(
+        onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+        child: RefreshIndicator(
+          onRefresh: _fetchPostDetails,
+          child: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              Row(
+                children: [
+                  CircleAvatar(
+                    backgroundImage:
+                        profilePic != null ? NetworkImage(profilePic) : null,
+                    child: profilePic == null ? Text(name[0]) : null,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    name,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              if (post!['image_url'] != null &&
+                  post!['image_url'].toString().isNotEmpty)
+                Image.network(post!['image_url'], fit: BoxFit.cover),
+              const SizedBox(height: 12),
+              Text(post!['content'] ?? ''),
+              const SizedBox(height: 8),
+              Text(
+                _formatDate(post!['created_at']),
+                style: const TextStyle(color: Colors.grey),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  IconButton(
+                    onPressed: _toggleLike,
+                    icon: Icon(
+                      isLiked ? Icons.favorite : Icons.favorite_border,
+                      color: isLiked ? Colors.red : Colors.grey,
+                    ),
+                  ),
+                  Text('${post!['Likes']?.length ?? 0} likes'),
+                ],
+              ),
+              const Divider(height: 32),
+              const Text(
+                "Comments",
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _commentController,
+                decoration: InputDecoration(
+                  hintText: 'Write a comment...',
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.send),
+                    onPressed: _addComment,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-                Text('${post!['Likes']?.length ?? 0} likes'),
-              ],
-            ),
-            const Divider(height: 32),
-            const Text(
-              "Comments",
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _commentController,
-              decoration: InputDecoration(
-                hintText: 'Write a comment...',
-                suffixIcon: IconButton(
-                  icon: const Icon(Icons.send),
-                  onPressed: _addComment,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
               ),
-            ),
-            const SizedBox(height: 12),
-            ...comments.map(
-              (c) => ListTile(
-                leading: CircleAvatar(
-                  backgroundImage:
-                      c['User']['profile_pic'] != null
-                          ? NetworkImage(c['User']['profile_pic'])
-                          : null,
-                  child:
-                      c['User']['profile_pic'] == null
-                          ? Text(c['User']['name'][0])
-                          : null,
-                ),
-                title: Text(c['User']['name']),
-                subtitle: Text(c['content']),
-                trailing: Text(
-                  _formatDate(c['created_at']),
-                  style: const TextStyle(fontSize: 10),
-                ),
-              ),
-            ),
-          ],
+              const SizedBox(height: 12),
+              ...comments.map((c) {
+                final user = c['Author'] ?? {};
+                final name = user['name'] ?? 'U';
+                final profilePic = user['profile_pic'];
+
+                return ListTile(
+                  leading: CircleAvatar(
+                    backgroundImage:
+                        profilePic != null ? NetworkImage(profilePic) : null,
+                    child: profilePic == null ? Text(name[0]) : null,
+                  ),
+                  title: Text(name),
+                  subtitle: Text(c['content'] ?? ''),
+                  trailing: Text(
+                    _formatDate(c['created_at']),
+                    style: const TextStyle(fontSize: 10),
+                  ),
+                );
+              }),
+            ],
+          ),
         ),
       ),
     );

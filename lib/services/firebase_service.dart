@@ -69,6 +69,16 @@ class FirebaseNotificationService {
       break;
 
     case 'comment':
+      final postId = int.tryParse(message.data['postId'] ?? '');
+        if (postId != null) {
+          navigatorKey.currentState?.push(
+            MaterialPageRoute(
+              builder: (context) => PostDetailsScreen(postId: postId, userId: userId),
+            ),
+          );
+        }
+        break;
+
     case 'like':
       final postId = int.tryParse(message.data['postId'] ?? '');
       if (postId != null) {
@@ -81,6 +91,15 @@ class FirebaseNotificationService {
       break;
 
     case 'event_announcement':
+      final eventId = int.tryParse(message.data['eventId'] ?? '');
+        if (eventId != null) {
+          navigatorKey.currentState?.push(
+            MaterialPageRoute(
+              builder: (context) => EventDetailsScreen(eventId: eventId, userId: userId),
+            ),
+          );
+        }
+        break;
     case 'new_event':
       final eventId = int.tryParse(message.data['eventId'] ?? '');
       if (eventId != null) {

@@ -42,52 +42,60 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
       Uri.parse('http://13.50.2.82:3000/events/${widget.eventId}'),
       headers: {'Authorization': 'Bearer $token'},
     );
-    final participantsRes = await http.get(
-      Uri.parse('http://13.50.2.82:3000/events/${widget.eventId}/participants'),
-      headers: {'Authorization': 'Bearer $token'},
-    );
+
     final announcementsRes = await http.get(
       Uri.parse('http://13.50.2.82:3000/announcements/${widget.eventId}'),
       headers: {'Authorization': 'Bearer $token'},
     );
 
-    if (eventRes.statusCode == 200 &&
-        participantsRes.statusCode == 200 &&
-        announcementsRes.statusCode == 200) {
+    if (eventRes.statusCode == 200 && announcementsRes.statusCode == 200) {
       final e = json.decode(eventRes.body);
-      final pList = json.decode(participantsRes.body);
       final aList = json.decode(announcementsRes.body);
 
-      final orgId = e['organization_id'];
-      final orgRes = await http.get(
-        Uri.parse('http://13.50.2.82:3000/organization_members/$orgId'),
-        headers: {'Authorization': 'Bearer $token'},
-      );
+      setState(() {
+        event = e;
+        announcements = aList;
+      });
 
-      if (orgRes.statusCode == 200) {
-        final orgList = json.decode(orgRes.body);
-        final userMembership = orgList.firstWhere(
-          (m) => m['user_id'] == widget.userId,
-          orElse: () => null,
+      if (widget.userId != 0) {
+        final participantsRes = await http.get(
+          Uri.parse(
+            'http://13.50.2.82:3000/events/${widget.eventId}/participants',
+          ),
+          headers: {'Authorization': 'Bearer $token'},
         );
 
-        final userParticipant = pList.firstWhere(
-          (p) => p['user_id'] == widget.userId,
-          orElse: () => null,
+        final orgId = e['organization_id'];
+        final orgRes = await http.get(
+          Uri.parse('http://13.50.2.82:3000/organization_members/$orgId'),
+          headers: {'Authorization': 'Bearer $token'},
         );
 
-        setState(() {
-          event = e;
-          announcements = aList;
-          participants = pList;
-          orgMembers = orgList;
-          isParticipant = userParticipant != null;
-          isOrgMember = userMembership != null;
-          isOrgAdmin =
-              userMembership != null &&
-              (userMembership['role'] == 'admin' ||
-                  userMembership['role'] == 'owner');
-        });
+        if (participantsRes.statusCode == 200 && orgRes.statusCode == 200) {
+          final pList = json.decode(participantsRes.body);
+          final orgList = json.decode(orgRes.body);
+
+          final userMembership = orgList.firstWhere(
+            (m) => m['user_id'] == widget.userId,
+            orElse: () => null,
+          );
+
+          final userParticipant = pList.firstWhere(
+            (p) => p['user_id'] == widget.userId,
+            orElse: () => null,
+          );
+
+          setState(() {
+            participants = pList;
+            orgMembers = orgList;
+            isParticipant = userParticipant != null;
+            isOrgMember = userMembership != null;
+            isOrgAdmin =
+                userMembership != null &&
+                (userMembership['role'] == 'admin' ||
+                    userMembership['role'] == 'owner');
+          });
+        }
       }
     }
   }
@@ -163,7 +171,7 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
 
     final org = event!['Organization'] ?? {};
     final orgName = org['name'] ?? 'Unknown';
-    final orgLogo = org['logo'];
+    final orgLogoBlob = org['logo_blob'];
 
     return Scaffold(
       appBar: AppBar(title: const Text("Event Details")),
@@ -175,9 +183,25 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
             Row(
               children: [
                 CircleAvatar(
+                  radius: 24,
+                  backgroundColor: Colors.grey[300],
                   backgroundImage:
-                      orgLogo != null ? NetworkImage(orgLogo) : null,
-                  child: orgLogo == null ? Text(orgName[0]) : null,
+                      (orgLogoBlob != null &&
+                              orgLogoBlob.startsWith('data:image/'))
+                          ? MemoryImage(
+                            base64Decode(orgLogoBlob.split(',').last),
+                          )
+                          : null,
+                  child:
+                      (orgLogoBlob == null)
+                          ? Text(
+                            orgName.isNotEmpty ? orgName[0].toUpperCase() : '?',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          )
+                          : null,
                 ),
                 const SizedBox(width: 8),
                 Text(
@@ -216,16 +240,28 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
             const SizedBox(height: 16),
 
             // Join/Leave button logic
-            if (!isOrgMember && !isParticipant)
+            if (widget.userId == 0)
+              const Text(
+                "Login to interact with this event.",
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.red,
+                ),
+              )
+            else if (!isOrgMember && !isParticipant)
               ElevatedButton(
                 onPressed: _joinEvent,
                 child: const Text('Join Event'),
-              ),
-            if (!isOrgMember && isParticipant)
+              )
+            else if (!isOrgMember && isParticipant)
               ElevatedButton(
                 onPressed: _leaveEvent,
                 style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                child: const Text('Leave Event'),
+                child: const Text(
+                  'Leave Event',
+                  style: TextStyle(color: Colors.white, fontSize: 16),
+                ),
               ),
 
             const SizedBox(height: 24),

@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 import '../services/api_service.dart';
 
@@ -29,14 +30,33 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     }
   }
 
-  Future<void> _pickImage() async {
+  Future<void> _pickAndCropImage() async {
     final picker = ImagePicker();
-    final picked = await picker.pickImage(source: ImageSource.gallery);
-    if (picked != null) {
-      setState(() {
-        _selectedImage = File(picked.path);
-        _initialImageUrl = null;
-      });
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+
+    if (pickedFile != null) {
+      final croppedFile = await ImageCropper().cropImage(
+        sourcePath: pickedFile.path,
+        aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
+        compressFormat: ImageCompressFormat.jpg,
+        compressQuality: 90,
+        uiSettings: [
+          AndroidUiSettings(
+            toolbarTitle: 'Crop Image',
+            toolbarColor: Colors.blue,
+            toolbarWidgetColor: Colors.white,
+            lockAspectRatio: true,
+          ),
+          IOSUiSettings(title: 'Crop Image', aspectRatioLockEnabled: true),
+        ],
+      );
+
+      if (croppedFile != null) {
+        setState(() {
+          _selectedImage = File(croppedFile.path);
+          _initialImageUrl = null;
+        });
+      }
     }
   }
 
@@ -141,7 +161,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
               )
             else
               OutlinedButton.icon(
-                onPressed: _pickImage,
+                onPressed: _pickAndCropImage,
                 icon: const Icon(Icons.image),
                 label: const Text('Add Image'),
               ),

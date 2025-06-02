@@ -5,7 +5,7 @@ import 'package:cedar_roots/services/api_service.dart';
 import 'package:cedar_roots/services/socket_service.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:google_sign_in/google_sign_in.dart';
+// import 'package:google_sign_in/google_sign_in.dart';
 import 'dart:convert';
 
 class LoginScreen extends StatefulWidget {
@@ -19,12 +19,12 @@ class _LoginScreenState extends State<LoginScreen> {
 
   bool _passwordVisible = false; // Variable to control password visibility
 
-  // Google Sign-In instance
-  final GoogleSignIn _googleSignIn = GoogleSignIn(
-    clientId:
-        "344338108473-q33tljdv7berb5qqlv417rm9fdjji1gg.apps.googleusercontent.com",
-    scopes: ['email'],
-  );
+  // // Google Sign-In instance
+  // final GoogleSignIn _googleSignIn = GoogleSignIn(
+  //   clientId:
+  //       "344338108473-q33tljdv7berb5qqlv417rm9fdjji1gg.apps.googleusercontent.com",
+  //   scopes: ['email'],
+  // );
 
   void onLoginSuccess(int userId) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -130,26 +130,26 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  // Google login function
-  Future<void> _googleLogin(BuildContext context) async {
-    try {
-      GoogleSignInAccount? user = await _googleSignIn.signInSilently();
-      user ??= await _googleSignIn.signIn(); // If not signed in, prompt login
+  // // Google login function
+  // Future<void> _googleLogin(BuildContext context) async {
+  //   try {
+  //     GoogleSignInAccount? user = await _googleSignIn.signInSilently();
+  //     user ??= await _googleSignIn.signIn(); // If not signed in, prompt login
 
-      if (user != null) {
-        SharedPreferences prefs = await SharedPreferences.getInstance();
-        prefs.setBool('is_logged_in', true);
-        prefs.setString('username', user.displayName ?? "Google User");
+  //     if (user != null) {
+  //       SharedPreferences prefs = await SharedPreferences.getInstance();
+  //       prefs.setBool('is_logged_in', true);
+  //       prefs.setString('username', user.displayName ?? "Google User");
 
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => NavBar()),
-        );
-      }
-    } catch (error) {
-      print("Google login failed: $error");
-    }
-  }
+  //       Navigator.pushReplacement(
+  //         context,
+  //         MaterialPageRoute(builder: (context) => NavBar()),
+  //       );
+  //     }
+  //   } catch (error) {
+  //     print("Google login failed: $error");
+  //   }
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -198,12 +198,12 @@ class _LoginScreenState extends State<LoginScreen> {
               onPressed: () => _login(context),
               child: Text('Log In'),
             ),
-            SizedBox(height: 20),
-            // Google login button
-            ElevatedButton(
-              onPressed: () => _googleLogin(context),
-              child: Text('Login with Google'),
-            ),
+            // SizedBox(height: 20),
+            // // Google login button
+            // ElevatedButton(
+            //   onPressed: () => _googleLogin(context),
+            //   child: Text('Login with Google'),
+            // ),
             SizedBox(height: 20),
             // Registration button (Navigate to register screen)
             TextButton(

@@ -1,5 +1,8 @@
+import 'package:cedar_roots/utils/image_blob_cache.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'dart:convert';
+import 'dart:typed_data';
 
 class UserPost extends StatelessWidget {
   final Map<String, dynamic> post;
@@ -19,6 +22,56 @@ class UserPost extends StatelessWidget {
     required this.onLike,
   }) : super(key: key);
 
+  Future<Uint8List> _loadBlobImage(String blob) async {
+    final cached = ImageBlobCache.get(blob);
+    if (cached != null) return cached;
+
+    try {
+      final decoded = base64Decode(blob.split(',').last);
+      ImageBlobCache.set(blob, decoded);
+      return decoded;
+    } catch (e) {
+      throw Exception("Failed to decode base64 image");
+    }
+  }
+
+  Widget _buildPostImage(BuildContext context) {
+    final String? imageUrl = post['image_url'];
+    final double imageSize = MediaQuery.of(context).size.width - 24;
+
+    if (imageUrl != null && imageUrl.isNotEmpty) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 10),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: Image.network(
+            imageUrl,
+            height: imageSize,
+            width: imageSize,
+            fit: BoxFit.cover,
+            loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress == null) return child;
+              return SizedBox(
+                height: imageSize,
+                width: imageSize,
+                child: const Center(child: CircularProgressIndicator()),
+              );
+            },
+            errorBuilder: (context, error, stackTrace) {
+              return SizedBox(
+                height: imageSize,
+                width: imageSize,
+                child: const Center(child: Icon(Icons.broken_image)),
+              );
+            },
+          ),
+        ),
+      );
+    }
+
+    return const SizedBox.shrink();
+  }
+
   @override
   Widget build(BuildContext context) {
     final bool isLiked =
@@ -35,7 +88,7 @@ class UserPost extends StatelessWidget {
 
     final author = post['User'] ?? {};
     final authorName = author['name'] ?? 'Unknown';
-    final profilePic = author['profile_pic'] ?? '';
+    final profilePicBlob = author['profile_pic_blob'];
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -53,18 +106,39 @@ class UserPost extends StatelessWidget {
           // Author header
           Row(
             children: [
-              CircleAvatar(
-                backgroundImage:
-                    profilePic.isNotEmpty ? NetworkImage(profilePic) : null,
-                backgroundColor: Colors.grey[300],
-                child:
-                    profilePic.isEmpty
-                        ? Text(
-                          authorName[0].toUpperCase(),
-                          style: TextStyle(color: Colors.white),
-                        )
+              FutureBuilder<Uint8List>(
+                future:
+                    profilePicBlob != null
+                        ? _loadBlobImage(profilePicBlob)
                         : null,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting &&
+                      profilePicBlob != null) {
+                    return const CircleAvatar(
+                      radius: 20,
+                      backgroundColor: Colors.grey,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    );
+                  }
+
+                  if (snapshot.hasData) {
+                    return CircleAvatar(
+                      radius: 20,
+                      backgroundImage: MemoryImage(snapshot.data!),
+                    );
+                  }
+
+                  return CircleAvatar(
+                    radius: 20,
+                    backgroundColor: Colors.grey[400],
+                    child: Text(
+                      authorName.isNotEmpty ? authorName[0].toUpperCase() : '?',
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                  );
+                },
               ),
+
               SizedBox(width: 10),
               Text(authorName, style: TextStyle(fontWeight: FontWeight.bold)),
               Spacer(),
@@ -85,15 +159,8 @@ class UserPost extends StatelessWidget {
                 ),
             ],
           ),
-          if (post['image_url'] != null &&
-              post['image_url'].toString().isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: 10),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.network(post['image_url'] ?? ''),
-              ),
-            ),
+          _buildPostImage(context),
+
           if (post['content'] != null && post['content'].toString().isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 8),

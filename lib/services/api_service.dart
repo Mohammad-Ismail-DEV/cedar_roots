@@ -302,7 +302,7 @@ class ApiServices {
       headers: _headersWithAuth(),
       body: json.encode({
         'sender_id': senderId,
-        'reciever_id': receiverId, // intentionally keeping your spelling
+        'receiver_id': receiverId, // intentionally keeping your spelling
         'status': 'pending',
       }),
     );
@@ -335,32 +335,32 @@ class ApiServices {
 
   // Fetch all posts (with user, comments, likes)
   Future<List<dynamic>> fetchPosts([int? userId]) async {
-  final query = userId != null ? '?user_id=$userId' : '';
-  final response = await http.get(
-    Uri.parse('$baseUrl/posts$query'),
-    headers: _headersWithAuth(),
-  );
+    final query = userId != null ? '?user_id=$userId' : '';
+    final response = await http.get(
+      Uri.parse('$baseUrl/posts$query'),
+      headers: _headersWithAuth(),
+    );
 
-  if (response.statusCode == 200) {
-    return jsonDecode(response.body);
-  } else {
-    throw Exception('Failed to load posts');
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to load posts');
+    }
   }
-}
 
-Future<List<dynamic>> fetchEvents([int? userId]) async {
-  final query = userId != null ? '?user_id=$userId' : '';
-  final response = await http.get(
-    Uri.parse('$baseUrl/events$query'),
-    headers: _headersWithAuth(),
-  );
+  Future<List<dynamic>> fetchEvents([int? userId]) async {
+    final query = userId != null ? '?user_id=$userId' : '';
+    final response = await http.get(
+      Uri.parse('$baseUrl/events$query'),
+      headers: _headersWithAuth(),
+    );
 
-  if (response.statusCode == 200) {
-    return jsonDecode(response.body);
-  } else {
-    throw Exception('Failed to load events');
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to load events');
+    }
   }
-}
 
   // Fetch a single post by ID
   Future<Map<String, dynamic>> fetchPostById(int postId) async {
