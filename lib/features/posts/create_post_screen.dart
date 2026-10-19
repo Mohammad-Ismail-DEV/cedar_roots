@@ -1,9 +1,11 @@
 import 'dart:io';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../core/image_url.dart';
 import '../../core/photo_crop.dart';
 import '../../core/ui.dart';
 import '../../data/media_repository.dart';
@@ -126,10 +128,13 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                       )
                     else if (_existingImageUrl != null)
                       _Preview(
-                        image: Image.network(
-                          _existingImageUrl!,
+                        image: CachedNetworkImage(
+                          imageUrl: sizedImageUrl(
+                            _existingImageUrl!,
+                            logicalWidth: MediaQuery.sizeOf(context).width,
+                            pixelRatio: MediaQuery.devicePixelRatioOf(context),
+                          ),
                           fit: BoxFit.contain,
-                          cacheWidth: 1080,
                         ),
                         onRemove:
                             () => setState(() => _existingImageUrl = null),

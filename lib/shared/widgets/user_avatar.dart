@@ -1,7 +1,10 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+
+import '../../core/image_url.dart';
 
 /// Decodes server-rendered base64 avatars once. Small and bounded: the
 /// least recently used entries are dropped.
@@ -58,36 +61,35 @@ class UserAvatar extends StatelessWidget {
 
   Widget _fullResolution(BuildContext context) {
     final diameter = radius * 2;
-    final pixels = (diameter * MediaQuery.devicePixelRatioOf(context)).round();
+    final pixelRatio = MediaQuery.devicePixelRatioOf(context);
 
     return Stack(
       alignment: Alignment.center,
       children: [
         // Instant placeholder: the preview (or initial), replaced once the photo loads.
-        _circle(allowNetwork: false),
+        _circle(context, allowNetwork: false),
         ClipOval(
-          child: Image.network(
-            imageUrl!,
+          child: CachedNetworkImage(
+            imageUrl: sizedImageUrl(
+              imageUrl!,
+              logicalWidth: diameter,
+              pixelRatio: pixelRatio,
+            ),
             width: diameter,
             height: diameter,
             fit: BoxFit.cover,
-            cacheWidth: pixels,
+            memCacheWidth: (diameter * pixelRatio).round(),
             filterQuality: FilterQuality.medium,
-            frameBuilder:
-                (context, child, frame, wasSynchronouslyLoaded) =>
-                    AnimatedOpacity(
-                      opacity: frame == null ? 0 : 1,
-                      duration: const Duration(milliseconds: 200),
-                      child: child,
-                    ),
-            errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+            fadeInDuration: const Duration(milliseconds: 200),
+            placeholder: (_, __) => const SizedBox.shrink(),
+            errorWidget: (_, __, ___) => const SizedBox.shrink(),
           ),
         ),
       ],
     );
   }
 
-  ImageProvider? _provider({required bool allowNetwork}) {
+  ImageProvider? _provider(BuildContext context, {required bool allowNetwork}) {
     final blobBytes =
         (blob != null && blob!.isNotEmpty) ? _BlobCache.decode(blob!) : null;
     if (blobBytes != null) return MemoryImage(blobBytes);
@@ -96,7 +98,14 @@ class UserAvatar extends StatelessWidget {
         final bytes = _BlobCache.decode(imageUrl!);
         return bytes == null ? null : MemoryImage(bytes);
       }
-      return allowNetwork ? NetworkImage(imageUrl!) : null;
+      if (!allowNetwork) return null;
+      return CachedNetworkImageProvider(
+        sizedImageUrl(
+          imageUrl!,
+          logicalWidth: radius * 2,
+          pixelRatio: MediaQuery.devicePixelRatioOf(context),
+        ),
+      );
     }
     return null;
   }
@@ -106,18 +115,19 @@ class UserAvatar extends StatelessWidget {
     if (radius >= _fullImageRadius && _hasNetworkImage) {
       return _fullResolution(context);
     }
-    return _circle();
+    return _circle(context);
   }
 
-  Widget _circle({bool allowNetwork = true}) {
-    final provider = _provider(allowNetwork: allowNetwork);
+  Widget _circle(BuildContext context, {bool allowNetwork = true}) {
+    final provider = _provider(context, allowNetwork: allowNetwork);
     final initial = name.isEmpty ? '?' : name[0].toUpperCase();
 
     return CircleAvatar(
       radius: radius,
       backgroundColor: backgroundColor,
       backgroundImage: provider,
-      onBackgroundImageError: provider is NetworkImage ? (_, __) {} : null,
+      onBackgroundImageError:
+          provider is CachedNetworkImageProvider ? (_, __) {} : null,
       child:
           provider == null
               ? Text(

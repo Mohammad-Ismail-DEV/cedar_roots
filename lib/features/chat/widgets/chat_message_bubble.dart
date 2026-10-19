@@ -1,6 +1,8 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/image_url.dart';
 import '../../../models/message.dart';
 import '../../../shared/widgets/message_status_icon.dart';
 
@@ -40,11 +42,23 @@ class ChatMessageBubble extends StatelessWidget {
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(10),
-              child: Image.network(
-                message.content,
+              child: CachedNetworkImage(
+                imageUrl: sizedImageUrl(
+                  message.content,
+                  logicalWidth: 200,
+                  pixelRatio: MediaQuery.devicePixelRatioOf(context),
+                ),
                 width: 200,
                 fit: BoxFit.cover,
-                errorBuilder:
+                placeholder:
+                    (_, __) => const SizedBox(
+                      width: 200,
+                      height: 120,
+                      child: Center(
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    ),
+                errorWidget:
                     (_, __, ___) => const SizedBox(
                       width: 200,
                       height: 120,

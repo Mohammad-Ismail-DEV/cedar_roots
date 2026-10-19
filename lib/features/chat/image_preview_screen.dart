@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:gal/gal.dart';
@@ -5,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:photo_view/photo_view.dart';
 import 'package:photo_view/photo_view_gallery.dart';
 
+import '../../core/image_url.dart';
 import '../../core/ui.dart';
 
 /// Full-screen swipeable gallery with a "save to gallery" button.
@@ -57,16 +59,42 @@ class _ImagePreviewScreenState extends State<ImagePreviewScreen> {
             onPageChanged: (index) => setState(() => _current = index),
             builder:
                 (context, index) => PhotoViewGalleryPageOptions(
-                  imageProvider: NetworkImage(widget.imageUrls[index]),
+                  // The original, at full resolution, so zooming stays sharp.
+                  imageProvider: CachedNetworkImageProvider(
+                    widget.imageUrls[index],
+                  ),
                   heroAttributes: PhotoViewHeroAttributes(
                     tag: widget.imageUrls[index],
                   ),
                   minScale: PhotoViewComputedScale.contained,
-                  maxScale: PhotoViewComputedScale.contained * 2.0,
+                  maxScale: PhotoViewComputedScale.contained * 4.0,
                 ),
+            // While the original downloads, show the screen-sized copy that is
+            // usually already cached from the feed, so something appears at once.
             loadingBuilder:
-                (context, event) =>
-                    const Center(child: CircularProgressIndicator()),
+                (context, event) => Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    CachedNetworkImage(
+                      imageUrl: sizedImageUrl(
+                        widget.imageUrls[_current],
+                        logicalWidth: MediaQuery.sizeOf(context).width,
+                        pixelRatio: MediaQuery.devicePixelRatioOf(context),
+                      ),
+                      fit: BoxFit.contain,
+                      placeholder: (_, __) => const SizedBox.shrink(),
+                      errorWidget: (_, __, ___) => const SizedBox.shrink(),
+                    ),
+                    const Positioned(
+                      bottom: 40,
+                      child: SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    ),
+                  ],
+                ),
           ),
           Positioned(
             top: 40,

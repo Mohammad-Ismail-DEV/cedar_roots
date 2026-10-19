@@ -1,7 +1,9 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../core/image_url.dart';
 import '../../core/photo_crop.dart';
 import '../../core/session.dart';
 import '../../core/ui.dart';
@@ -80,7 +82,14 @@ class _Profile extends ConsumerWidget {
                   Center(
                     child:
                         url != null && url.isNotEmpty
-                            ? Image.network(url)
+                            ? CachedNetworkImage(
+                              imageUrl: sizedImageUrl(
+                                url,
+                                logicalWidth: MediaQuery.sizeOf(ctx).width,
+                                pixelRatio: MediaQuery.devicePixelRatioOf(ctx),
+                              ),
+                              fit: BoxFit.contain,
+                            )
                             : const Icon(
                               Icons.person,
                               size: 100,

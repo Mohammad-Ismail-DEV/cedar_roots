@@ -1,6 +1,8 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/image_url.dart';
 import '../../../core/ui.dart';
 import '../../../data/search_repository.dart';
 import '../../../models/search_results.dart';
@@ -89,7 +91,15 @@ class SearchOverlay extends ConsumerWidget {
             ListTile(
               leading: CircleAvatar(
                 backgroundImage:
-                    post.imageUrl != null ? NetworkImage(post.imageUrl!) : null,
+                    post.imageUrl != null
+                        ? CachedNetworkImageProvider(
+                          sizedImageUrl(
+                            post.imageUrl!,
+                            logicalWidth: 40,
+                            pixelRatio: MediaQuery.devicePixelRatioOf(context),
+                          ),
+                        )
+                        : null,
                 child:
                     post.imageUrl == null ? const Icon(Icons.post_add) : null,
               ),

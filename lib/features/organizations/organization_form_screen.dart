@@ -1,9 +1,11 @@
 import 'dart:io';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../core/image_url.dart';
 import '../../core/ui.dart';
 import '../../data/media_repository.dart';
 import '../../data/organization_repository.dart';
@@ -116,10 +118,16 @@ class _OrganizationFormScreenState
     }
   }
 
-  ImageProvider? get _logoImage {
+  ImageProvider? _logoImage(BuildContext context) {
     if (_newLogo != null) return FileImage(File(_newLogo!.path));
     if (_existingLogoUrl != null && _existingLogoUrl!.isNotEmpty) {
-      return NetworkImage(_existingLogoUrl!);
+      return CachedNetworkImageProvider(
+        sizedImageUrl(
+          _existingLogoUrl!,
+          logicalWidth: 96,
+          pixelRatio: MediaQuery.devicePixelRatioOf(context),
+        ),
+      );
     }
     return null;
   }
@@ -154,9 +162,9 @@ class _OrganizationFormScreenState
                           child: CircleAvatar(
                             radius: 48,
                             backgroundColor: Colors.grey[200],
-                            backgroundImage: _logoImage,
+                            backgroundImage: _logoImage(context),
                             child:
-                                _logoImage == null
+                                _logoImage(context) == null
                                     ? const Icon(
                                       Icons.camera_alt,
                                       color: Colors.grey,

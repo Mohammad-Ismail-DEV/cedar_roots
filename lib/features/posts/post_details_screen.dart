@@ -8,7 +8,10 @@ import '../../models/post.dart';
 import '../../shared/widgets/post_image.dart';
 import '../../shared/widgets/user_avatar.dart';
 import '../chat/image_preview_screen.dart';
+import '../feed/feed_provider.dart';
 import '../feed/post_details_provider.dart';
+import '../feed/widgets/comment_tile.dart';
+import 'create_post_screen.dart';
 
 class PostDetailsScreen extends ConsumerStatefulWidget {
   const PostDetailsScreen({super.key, required this.postId});
@@ -58,6 +61,54 @@ class _PostDetailsScreenState extends ConsumerState<PostDetailsScreen> {
     }
   }
 
+  Future<void> _editPost(Post post) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute<bool>(
+        builder: (_) => CreatePostScreen(existingPost: post),
+      ),
+    );
+    if (!mounted) return;
+    try {
+      await _notifier.reload();
+    } catch (e) {
+      if (mounted) showErrorSnack(context, e);
+    }
+  }
+
+  Future<void> _deletePost(Post post) async {
+    final confirmed = await confirm(
+      context,
+      title: 'Delete Post',
+      message: 'Are you sure you want to delete this post?',
+      confirmLabel: 'Delete',
+      destructive: true,
+    );
+    if (!confirmed) return;
+    try {
+      await ref.read(feedProvider.notifier).deletePost(post.id);
+      if (mounted) Navigator.pop(context);
+    } catch (e) {
+      if (mounted) showErrorSnack(context, e);
+    }
+  }
+
+  Future<void> _deleteComment(int commentId) async {
+    final confirmed = await confirm(
+      context,
+      title: 'Delete Comment',
+      message: 'Are you sure you want to delete this comment?',
+      confirmLabel: 'Delete',
+      destructive: true,
+    );
+    if (!confirmed) return;
+    try {
+      await _notifier.deleteComment(commentId);
+    } catch (e) {
+      if (mounted) showErrorSnack(context, e);
+    }
+  }
+
   String _formatDate(DateTime? date) =>
       date == null ? '' : DateFormat('yMMMd • h:mm a').format(date);
 
@@ -99,7 +150,24 @@ class _PostDetailsScreenState extends ConsumerState<PostDetailsScreen> {
     final isLiked = me != null && post.isLikedBy(me);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Post Details')),
+      appBar: AppBar(
+        title: const Text('Post Details'),
+        actions: [
+          // Same Edit / Delete menu as on the feed card, for the post's owner.
+          if (me != null && post.userId == me)
+            PopupMenuButton<String>(
+              onSelected: (value) {
+                if (value == 'edit') _editPost(post);
+                if (value == 'delete') _deletePost(post);
+              },
+              itemBuilder:
+                  (_) => const [
+                    PopupMenuItem(value: 'edit', child: Text('Edit')),
+                    PopupMenuItem(value: 'delete', child: Text('Delete')),
+                  ],
+            ),
+        ],
+      ),
       body: GestureDetector(
         onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
         child: RefreshIndicator(
@@ -180,19 +248,13 @@ class _PostDetailsScreenState extends ConsumerState<PostDetailsScreen> {
               ),
               const SizedBox(height: 12),
               for (final comment in post.comments)
-                ListTile(
-                  leading: UserAvatar(
-                    name: comment.author?.name ?? 'U',
-                    blob: comment.author?.profilePicBlob,
-                    imageUrl: comment.author?.profilePic,
-                    backgroundColor: Colors.grey,
-                  ),
-                  title: Text(comment.author?.name ?? 'User'),
-                  subtitle: Text(comment.content),
-                  trailing: Text(
-                    _formatDate(comment.createdAt),
-                    style: const TextStyle(fontSize: 10),
-                  ),
+                CommentTile(
+                  comment: comment,
+                  // The post's owner can remove anyone's comment; others only their own.
+                  onDelete:
+                      canDeleteComment(post: post, comment: comment, me: me)
+                          ? () => _deleteComment(comment.id)
+                          : null,
                 ),
             ],
           ),

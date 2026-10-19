@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 
 import '../../../core/session.dart';
 import '../../../core/ui.dart';
 import '../post_details_provider.dart';
-import '../../../shared/widgets/user_avatar.dart';
+import 'comment_tile.dart';
 
 /// Bottom sheet with a post's comments and a box to add one.
 class CommentSheet extends ConsumerStatefulWidget {
@@ -107,50 +106,16 @@ class _CommentSheetState extends ConsumerState<CommentSheet> {
                             itemCount: data.comments.length,
                             itemBuilder: (_, i) {
                               final comment = data.comments[i];
-                              final author = comment.author;
-                              final canDelete =
-                                  me != null &&
-                                  (comment.userId == me || data.userId == me);
-                              return ListTile(
-                                leading: UserAvatar(
-                                  name: author?.name ?? 'User',
-                                  blob: author?.profilePicBlob,
-                                  imageUrl: author?.profilePic,
-                                  backgroundColor: Colors.grey,
-                                ),
-                                title: Text(
-                                  author?.name ?? 'User',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                subtitle: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(comment.content),
-                                    if (comment.createdAt != null)
-                                      Text(
-                                        DateFormat(
-                                          'yyyy-MM-dd HH:mm',
-                                        ).format(comment.createdAt!),
-                                        style: const TextStyle(
-                                          fontSize: 12,
-                                          color: Colors.grey,
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                                trailing:
-                                    canDelete
-                                        ? IconButton(
-                                          icon: const Icon(
-                                            Icons.delete_outline,
-                                            color: Colors.red,
-                                          ),
-                                          onPressed: () => _delete(comment.id),
+                              return CommentTile(
+                                comment: comment,
+                                onDelete:
+                                    canDeleteComment(
+                                          post: data,
+                                          comment: comment,
+                                          me: me,
                                         )
+                                        ? () => _delete(comment.id)
                                         : null,
-                                isThreeLine: true,
                               );
                             },
                           );
