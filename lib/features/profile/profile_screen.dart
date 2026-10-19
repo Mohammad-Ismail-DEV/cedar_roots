@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../core/photo_crop.dart';
 import '../../core/session.dart';
 import '../../core/ui.dart';
 import '../../models/connection.dart';
@@ -58,39 +58,7 @@ class _Profile extends ConsumerWidget {
     final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
     if (picked == null) return;
 
-    // Cropping is optional in spirit: it opens on the whole photo with a free-form frame,
-    // so confirming without touching it keeps the image as it is. Nothing forces a square.
-    final cropped = await ImageCropper().cropImage(
-      sourcePath: picked.path,
-      compressFormat: ImageCompressFormat.jpg,
-      compressQuality: 100,
-      uiSettings: [
-        AndroidUiSettings(
-          toolbarTitle: 'Adjust photo',
-          toolbarColor: Colors.blue,
-          toolbarWidgetColor: Colors.white,
-          initAspectRatio: CropAspectRatioPreset.original,
-          lockAspectRatio: false,
-          aspectRatioPresets: const [
-            CropAspectRatioPreset.original,
-            CropAspectRatioPreset.square,
-            CropAspectRatioPreset.ratio4x3,
-            CropAspectRatioPreset.ratio16x9,
-          ],
-        ),
-        IOSUiSettings(
-          title: 'Adjust photo',
-          aspectRatioLockEnabled: false,
-          resetAspectRatioEnabled: true,
-          aspectRatioPresets: const [
-            CropAspectRatioPreset.original,
-            CropAspectRatioPreset.square,
-            CropAspectRatioPreset.ratio4x3,
-            CropAspectRatioPreset.ratio16x9,
-          ],
-        ),
-      ],
-    );
+    final cropped = await cropPhoto(picked.path);
     if (cropped == null || !context.mounted) return;
 
     await _run(

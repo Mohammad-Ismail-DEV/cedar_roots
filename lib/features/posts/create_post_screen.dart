@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../core/photo_crop.dart';
 import '../../core/ui.dart';
 import '../../data/media_repository.dart';
 import '../../data/post_repository.dart';
@@ -42,13 +43,17 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
     super.dispose();
   }
 
-  /// Takes the photo exactly as it is: no cropping, no resizing, no recompression.
+  /// Full-resolution photo, then the crop screen. The crop is free-form: confirm as is to
+  /// keep the whole photo, or drag the frame to any shape (it never forces a square).
   Future<void> _pickImage() async {
     final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
     if (picked == null) return;
 
+    final cropped = await cropPhoto(picked.path);
+    if (cropped == null) return;
+
     setState(() {
-      _newImage = File(picked.path);
+      _newImage = File(cropped.path);
       _existingImageUrl = null;
     });
   }
