@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/navigation.dart';
 import 'core/providers.dart';
 import 'features/chat/delivery_receipts.dart';
+import 'features/feed/feed_poller.dart';
 import 'features/feed/live_post_updates.dart';
 import 'features/notifications/push_handler.dart';
 import 'features/shell/nav_bar.dart';
@@ -18,6 +19,7 @@ class CedarRootsApp extends ConsumerWidget {
     ref.watch(pushLifecycleProvider);
     ref.watch(deliveryReceiptsProvider);
     ref.watch(livePostUpdatesProvider);
+    ref.watch(feedPollerProvider);
 
     return MaterialApp(
       navigatorObservers: [routeObserver],

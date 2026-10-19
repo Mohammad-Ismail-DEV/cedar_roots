@@ -74,6 +74,28 @@ class FeedNotifier extends AsyncNotifier<List<FeedItem>> {
     return items;
   }
 
+  bool _polling = false;
+
+  /// Background check for new posts and events. Only replaces the feed (and so only rebuilds
+  /// the list) when the server's copy differs from what is on screen, and never throws.
+  Future<void> poll() async {
+    final current = state.valueOrNull;
+    if (_polling || current == null) return;
+    _polling = true;
+    try {
+      final before = feedSignature(current);
+      final fresh = await _fetch(ref.read(currentUserIdProvider));
+      final now = state.valueOrNull;
+      // Skip if the user liked, deleted or refreshed while we were fetching: our copy is stale.
+      if (now == null || feedSignature(now) != before) return;
+      if (feedSignature(fresh) != before) state = AsyncData(fresh);
+    } catch (_) {
+      // Next tick tries again.
+    } finally {
+      _polling = false;
+    }
+  }
+
   /// Throws on failure so pull-to-refresh can tell the user; the old feed stays.
   Future<void> refresh() async {
     final fresh = await _fetch(ref.read(currentUserIdProvider));
@@ -125,3 +147,18 @@ class FeedNotifier extends AsyncNotifier<List<FeedItem>> {
     ]);
   }
 }
+
+/// A cheap fingerprint of everything the feed shows, to tell whether a refetch changed anything.
+String feedSignature(List<FeedItem> items) => items
+    .map((item) {
+      if (item is PostFeedItem) {
+        final p = item.post;
+        return 'p${p.id}|${p.content}|${p.imageUrl}|'
+            '${p.likes.map((l) => l.userId).join(',')}|'
+            '${p.comments.map((c) => '${c.id}:${c.content}').join(',')}';
+      }
+      final e = (item as EventFeedItem).event;
+      return 'e${e.id}|${e.title}|${e.description}|${e.location}|${e.dateTime}|'
+          '${e.organization?.name}';
+    })
+    .join('\n');

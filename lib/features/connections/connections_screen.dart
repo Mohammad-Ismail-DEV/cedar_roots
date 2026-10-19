@@ -174,8 +174,11 @@ mixin _SuggestionSearch<T extends ConsumerStatefulWidget> on ConsumerState<T> {
     if (suggestionQuery.isEmpty) return const [];
     final users =
         ref.watch(userSuggestionsProvider(suggestionQuery)).valueOrNull;
+    // Never suggest yourself, even when your name partly matches the search.
+    final me = ref.read(currentUserIdProvider);
     final shown =
-        users?.where((u) => !exclude.contains(u.id)).toList() ?? const [];
+        users?.where((u) => u.id != me && !exclude.contains(u.id)).toList() ??
+        const [];
     if (shown.isEmpty) return const [];
 
     return [
