@@ -1,4 +1,4 @@
-package com.mohamad_and_hala.cedar_roots
+package com.mohamadismail.cedarroots
 
 import android.content.Intent
 import android.net.Uri

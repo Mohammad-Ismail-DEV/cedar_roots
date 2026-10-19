@@ -1,36 +1,26 @@
 {
   "project_info": {
-    "project_number": "344338108473",
-    "project_id": "cedar-roots-453719",
-    "storage_bucket": "cedar-roots-453719.firebasestorage.app"
+    "project_number": "892632208490",
+    "project_id": "cedar-roots-b7a59",
+    "storage_bucket": "cedar-roots-b7a59.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:344338108473:android:4f42e475e0f5942b45bde8",
+        "mobilesdk_app_id": "1:892632208490:android:71bbdb6a6c7e40c73e2613",
         "android_client_info": {
-          "package_name": "com.mohamad_and_hala.cedar_roots"
+          "package_name": "com.mohamadismail.cedarroots"
         }
       },
-      "oauth_client": [
-        {
-          "client_id": "344338108473-q33tljdv7berb5qqlv417rm9fdjji1gg.apps.googleusercontent.com",
-          "client_type": 3
-        }
-      ],
+      "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyBPFOdyk21yAZNhMfsV4GqFJK833yuIBGQ"
+          "current_key": "AIzaSyC6XWUSD_M9BpFhitAhPI_DW-BOLkvFwWk"
         }
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "344338108473-q33tljdv7berb5qqlv417rm9fdjji1gg.apps.googleusercontent.com",
-              "client_type": 3
-            }
-          ]
+          "other_platform_oauth_client": []
         }
       }
     }
