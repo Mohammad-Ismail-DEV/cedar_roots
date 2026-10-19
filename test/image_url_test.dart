@@ -36,4 +36,29 @@ void main() {
   test('keeps any other query parameters', () {
     expect(sized('$upload?v=2', 336), '$upload?v=2&w=1080');
   });
+
+  group('resolveUploadUrl', () {
+    const api = 'https://real.ngrok-free.app';
+
+    test('leaves reachable and foreign URLs alone', () {
+      expect(resolveUploadUrl(upload, apiUrl: api), upload);
+      expect(
+        resolveUploadUrl('https://example.com/pic.jpg', apiUrl: api),
+        'https://example.com/pic.jpg',
+      );
+    });
+
+    test('re-points photos stored with a local address at this server', () {
+      for (final host in [
+        'localhost:3000',
+        '10.0.2.2:3000',
+        '192.168.1.5:3000',
+      ]) {
+        expect(
+          resolveUploadUrl('http://$host/uploads/a.jpg', apiUrl: api),
+          '$api/uploads/a.jpg',
+        );
+      }
+    });
+  });
 }

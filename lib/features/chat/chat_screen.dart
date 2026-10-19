@@ -1,8 +1,10 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/photo_crop.dart';
 import '../../core/providers.dart';
 import '../../core/session.dart';
 import '../../core/ui.dart';
@@ -29,6 +31,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final _scroll = ScrollController();
   final _text = TextEditingController();
   bool _atBottom = true;
+  bool _uploading = false;
 
   ChatController get _controller =>
       ref.read(chatControllerProvider(widget.receiverId).notifier);
@@ -76,16 +79,28 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   Future<void> _pickAndSendImages() async {
+    if (_uploading) return;
     final picked = await ImagePicker().pickMultiImage();
-    for (final file in picked) {
-      try {
+    if (picked.isEmpty || !mounted) return;
+
+    setState(() => _uploading = true);
+    try {
+      for (final original in picked) {
+        var file = original;
+        // Each photo goes through the crop screen first (not available on web).
+        if (!kIsWeb) {
+          final cropped = await cropPhoto(original.path);
+          if (cropped == null) continue;
+          file = XFile(cropped.path);
+        }
         final url = await ref.read(mediaRepositoryProvider).uploadImage(file);
         _controller.sendImage(url);
         _scrollToBottom();
-      } catch (e) {
-        if (mounted) showErrorSnack(context, e);
-        return;
       }
+    } catch (e) {
+      if (mounted) showErrorSnack(context, e);
+    } finally {
+      if (mounted) setState(() => _uploading = false);
     }
   }
 
@@ -153,11 +168,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               child: const Text('Connecting…', textAlign: TextAlign.center),
             ),
           Expanded(child: _buildMessages(chat, messages, me)),
+          if (_uploading) const LinearProgressIndicator(minHeight: 3),
           const Divider(height: 1),
           MessageInputField(
             controller: _text,
             onSend: _sendText,
-            onImagePick: _pickAndSendImages,
+            onImagePick: _uploading ? null : _pickAndSendImages,
             onChanged: (_) => _controller.notifyTyping(),
           ),
         ],

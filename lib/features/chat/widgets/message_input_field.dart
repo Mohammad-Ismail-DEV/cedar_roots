@@ -12,7 +12,7 @@ class MessageInputField extends StatelessWidget {
 
   final TextEditingController controller;
   final VoidCallback onSend;
-  final VoidCallback onImagePick;
+  final VoidCallback? onImagePick;
   final ValueChanged<String>? onChanged;
   final bool isEnabled;
 

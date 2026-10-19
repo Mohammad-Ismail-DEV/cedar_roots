@@ -62,7 +62,7 @@ class _ImagePreviewScreenState extends State<ImagePreviewScreen> {
                   // The original, at full resolution, so zooming stays sharp.
                   imageProvider: CachedNetworkImageProvider(
                     headers: imageHeaders,
-                    widget.imageUrls[index],
+                    resolveUploadUrl(widget.imageUrls[index]),
                   ),
                   heroAttributes: PhotoViewHeroAttributes(
                     tag: widget.imageUrls[index],
