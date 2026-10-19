@@ -37,6 +37,9 @@ class AuthRepository {
     );
   }
 
+  Future<void> resendCode(String email) =>
+      api.post('/auth/resend', body: {'email': email});
+
   Future<void> verify({required String email, required String code}) async {
     final data = await api.post(
       '/auth/verify',

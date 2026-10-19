@@ -89,6 +89,8 @@ class ApiClient {
     return {
       if (json) 'Content-Type': 'application/json',
       if (token != null) 'Authorization': 'Bearer $token',
+      // ngrok's free tier otherwise answers browser (Flutter web) calls with an HTML warning page.
+      if (baseUrl.contains('ngrok')) 'ngrok-skip-browser-warning': 'true',
     };
   }
 

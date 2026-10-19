@@ -39,6 +39,8 @@ class UserRepository {
     },
   );
 
+  Future<void> deleteAccount(int id) => _api.delete('/users/$id');
+
   /// Uploads [file] and returns its public URL.
   Future<String> uploadImage(XFile file) => _api.uploadImage(file);
 }
