@@ -39,18 +39,22 @@ class Message {
   final int? localId;
 
   bool get isImage => type == 'image';
+
+  /// An image that has not been uploaded yet: [content] is a path on this device.
+  bool get isLocal => isImage && !content.startsWith('http');
   bool isMine(int myId) => senderId == myId;
 
-  Message copyWith({int? id, MessageStatus? status}) => Message(
-    id: id ?? this.id,
-    senderId: senderId,
-    receiverId: receiverId,
-    content: content,
-    sentAt: sentAt,
-    type: type,
-    status: status ?? this.status,
-    localId: localId,
-  );
+  Message copyWith({int? id, MessageStatus? status, String? content}) =>
+      Message(
+        id: id ?? this.id,
+        senderId: senderId,
+        receiverId: receiverId,
+        content: content ?? this.content,
+        sentAt: sentAt,
+        type: type,
+        status: status ?? this.status,
+        localId: localId,
+      );
 
   factory Message.fromJson(Map<String, dynamic> json) => Message(
     id: asInt(json['id']),

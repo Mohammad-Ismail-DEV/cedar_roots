@@ -14,5 +14,6 @@ class MediaRepository {
   final ApiClient _api;
 
   /// Uploads [file] and returns its public URL.
-  Future<String> uploadImage(XFile file) => _api.uploadImage(file);
+  Future<String> uploadImage(XFile file, {Future<void>? abortTrigger}) =>
+      _api.uploadImage(file, abortTrigger: abortTrigger);
 }

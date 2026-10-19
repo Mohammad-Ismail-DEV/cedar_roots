@@ -7,8 +7,6 @@ import 'package:intl/intl.dart';
 import '../../core/photo_crop.dart';
 import '../../core/providers.dart';
 import '../../core/session.dart';
-import '../../core/ui.dart';
-import '../../data/media_repository.dart';
 import '../../models/message.dart';
 import 'chat_controller.dart';
 import 'image_preview_screen.dart';
@@ -31,7 +29,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final _scroll = ScrollController();
   final _text = TextEditingController();
   bool _atBottom = true;
-  bool _uploading = false;
 
   ChatController get _controller =>
       ref.read(chatControllerProvider(widget.receiverId).notifier);
@@ -79,28 +76,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   Future<void> _pickAndSendImages() async {
-    if (_uploading) return;
     final picked = await ImagePicker().pickMultiImage();
-    if (picked.isEmpty || !mounted) return;
-
-    setState(() => _uploading = true);
-    try {
-      for (final original in picked) {
-        var file = original;
-        // Each photo goes through the crop screen first (not available on web).
-        if (!kIsWeb) {
-          final cropped = await cropPhoto(original.path);
-          if (cropped == null) continue;
-          file = XFile(cropped.path);
-        }
-        final url = await ref.read(mediaRepositoryProvider).uploadImage(file);
-        _controller.sendImage(url);
-        _scrollToBottom();
+    for (final original in picked) {
+      var path = original.path;
+      // Each photo goes through the crop screen first (not available on web).
+      if (!kIsWeb) {
+        final cropped = await cropPhoto(path);
+        if (cropped == null) continue;
+        path = cropped.path;
       }
-    } catch (e) {
-      if (mounted) showErrorSnack(context, e);
-    } finally {
-      if (mounted) setState(() => _uploading = false);
+      if (!mounted) return;
+      _controller.sendLocalImage(path);
+      _scrollToBottom();
     }
   }
 
@@ -114,7 +101,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   void _openImage(List<Message> messages, Message tapped) {
     final urls = [
       for (final m in messages)
-        if (m.isImage) m.content,
+        if (m.isImage && !m.isLocal) m.content,
     ];
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -168,12 +155,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               child: const Text('Connecting…', textAlign: TextAlign.center),
             ),
           Expanded(child: _buildMessages(chat, messages, me)),
-          if (_uploading) const LinearProgressIndicator(minHeight: 3),
+
           const Divider(height: 1),
           MessageInputField(
             controller: _text,
             onSend: _sendText,
-            onImagePick: _uploading ? null : _pickAndSendImages,
+            onImagePick: _pickAndSendImages,
             onChanged: (_) => _controller.notifyTyping(),
           ),
         ],
@@ -242,10 +229,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   message: message,
                   isMe: message.isMine(me),
                   onImageTap:
-                      message.isImage
+                      message.isImage && !message.isLocal
                           ? () => _openImage(messages, message)
                           : null,
                   onRetry: () => _controller.retry(message),
+                  onCancel: () => _controller.cancelSend(message),
                 ),
               ],
             );

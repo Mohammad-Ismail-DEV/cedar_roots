@@ -22,6 +22,14 @@ class ApiException implements Exception {
   String toString() => message;
 }
 
+/// The user cancelled an upload that was in progress.
+class UploadCancelled implements Exception {
+  const UploadCancelled();
+
+  @override
+  String toString() => 'Upload cancelled';
+}
+
 /// The only place that talks HTTP. Returns decoded JSON or throws [ApiException].
 class ApiClient {
   ApiClient({
@@ -38,6 +46,9 @@ class ApiClient {
 
   static const _timeout = Duration(seconds: 20);
 
+  /// A full-resolution photo over a slow connection needs far longer than a JSON call.
+  static const _uploadTimeout = Duration(minutes: 5);
+
   Future<dynamic> get(String path, {Map<String, Object?>? query}) =>
       _send('GET', path, query: query);
 
@@ -51,12 +62,17 @@ class ApiClient {
       _send('DELETE', path, body: body);
 
   /// Uploads an image and returns its public URL.
-  Future<String> uploadImage(XFile file) async {
+  /// Completing [abortTrigger] cancels the upload and throws [UploadCancelled].
+  Future<String> uploadImage(XFile file, {Future<void>? abortTrigger}) async {
     final bytes = await file.readAsBytes();
     final mimeType =
         lookupMimeType(file.name, headerBytes: bytes) ?? 'image/jpeg';
     final request =
-        http.MultipartRequest('POST', _uri('/upload'))
+        http.AbortableMultipartRequest(
+            'POST',
+            _uri('/upload'),
+            abortTrigger: abortTrigger,
+          )
           ..headers.addAll(_headers(json: false))
           ..files.add(
             http.MultipartFile.fromBytes(
@@ -69,6 +85,7 @@ class ApiClient {
 
     final response = await _guard(
       () async => http.Response.fromStream(await _http.send(request)),
+      timeout: _uploadTimeout,
     );
     final data = _decode(response);
     return data['url'] as String;
@@ -110,9 +127,14 @@ class ApiClient {
     return _decode(response);
   }
 
-  Future<http.Response> _guard(Future<http.Response> Function() call) async {
+  Future<http.Response> _guard(
+    Future<http.Response> Function() call, {
+    Duration timeout = _timeout,
+  }) async {
     try {
-      return await call().timeout(_timeout);
+      return await call().timeout(timeout);
+    } on http.RequestAbortedException {
+      throw const UploadCancelled();
     } on Exception catch (e) {
       AppLog.w('Network error: $e', 'api');
       throw const ApiException(0, 'Could not reach the server');

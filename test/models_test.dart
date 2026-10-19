@@ -209,4 +209,17 @@ void main() {
       expect(post.copyWith(likes: const []).likes, isEmpty);
     });
   });
+
+  test('an image whose content is a device path is local until uploaded', () {
+    Message image(String content) => Message(
+      id: 1,
+      senderId: 1,
+      receiverId: 2,
+      content: content,
+      sentAt: DateTime(2026),
+      type: 'image',
+    );
+    expect(image('/data/user/0/app/cache/crop.jpg').isLocal, isTrue);
+    expect(image('https://x.ngrok-free.app/uploads/a.jpg').isLocal, isFalse);
+  });
 }

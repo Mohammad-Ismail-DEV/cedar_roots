@@ -1,10 +1,13 @@
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 
+import '../../core/api_client.dart';
 import '../../core/session.dart';
 import '../../core/ui.dart';
 import '../../data/chat_repository.dart';
+import '../../data/media_repository.dart';
 import '../../models/message.dart';
 
 class ChatState {
@@ -74,6 +77,10 @@ class ChatController extends AutoDisposeFamilyNotifier<ChatState, int> {
   int _page = 1;
   bool _atBottom = true;
   Timer? _typingTimer;
+  bool _disposed = false;
+
+  /// Photos being uploaded, by local id: completing one cancels that upload.
+  final _uploads = <int, Completer<void>>{};
   DateTime _lastTypingSent = DateTime.fromMillisecondsSinceEpoch(0);
 
   int get _other => arg;
@@ -98,6 +105,10 @@ class ChatController extends AutoDisposeFamilyNotifier<ChatState, int> {
           .listen((_) => _syncLatest()),
     ];
     ref.onDispose(() {
+      _disposed = true;
+      for (final upload in _uploads.values) {
+        if (!upload.isCompleted) upload.complete();
+      }
       for (final s in subscriptions) {
         s.cancel();
       }
@@ -184,13 +195,76 @@ class ChatController extends AutoDisposeFamilyNotifier<ChatState, int> {
     if (content.isNotEmpty) _send(content, 'text');
   }
 
-  void sendImage(String url) => _send(url, 'image');
+  /// Shows the photo in the chat straight away, uploads it, then sends the message.
+  void sendLocalImage(String path) {
+    final localId = _nextLocalId();
+    final message = Message(
+      id: localId,
+      localId: localId,
+      senderId: _me,
+      receiverId: _other,
+      content: path,
+      type: 'image',
+      sentAt: DateTime.now(),
+      status: MessageStatus.sending,
+    );
+    state = state.copyWith(messages: [...state.messages, message]);
+    _upload(message);
+  }
+
+  Future<void> _upload(Message message) async {
+    final localId = message.localId!;
+    final cancel = Completer<void>();
+    _uploads[localId] = cancel;
+    try {
+      final url = await ref
+          .read(mediaRepositoryProvider)
+          .uploadImage(XFile(message.content), abortTrigger: cancel.future);
+      if (_disposed || cancel.isCompleted) return;
+      _update(localId, (m) => m.copyWith(content: url));
+      _chat.send(
+        receiverId: _other,
+        content: url,
+        localId: localId,
+        type: 'image',
+      );
+    } on UploadCancelled {
+      // The user removed the photo; cancelSend already took it out of the list.
+    } catch (_) {
+      if (!_disposed && !cancel.isCompleted) {
+        _update(localId, (m) => m.copyWith(status: MessageStatus.failed));
+      }
+    } finally {
+      _uploads.remove(localId);
+    }
+  }
+
+  void _update(int localId, Message Function(Message) change) {
+    state = state.copyWith(
+      messages: [
+        for (final m in state.messages) m.localId == localId ? change(m) : m,
+      ],
+    );
+  }
+
+  /// Stops an upload in progress, or discards a photo that failed to send.
+  void cancelSend(Message message) {
+    final upload = _uploads[message.localId];
+    if (upload != null && !upload.isCompleted) upload.complete();
+    state = state.copyWith(
+      messages: state.messages.where((m) => m.id != message.id).toList(),
+    );
+  }
 
   void retry(Message failed) {
     state = state.copyWith(
       messages: state.messages.where((m) => m.id != failed.id).toList(),
     );
-    _send(failed.content, failed.type);
+    if (failed.isLocal) {
+      sendLocalImage(failed.content);
+    } else {
+      _send(failed.content, failed.type);
+    }
   }
 
   void _send(String content, String type) {

@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -13,12 +16,16 @@ class ChatMessageBubble extends StatelessWidget {
     required this.isMe,
     this.onImageTap,
     this.onRetry,
+    this.onCancel,
   });
 
   final Message message;
   final bool isMe;
   final VoidCallback? onImageTap;
   final VoidCallback? onRetry;
+
+  /// Stops an upload in progress, or discards a photo that failed to send.
+  final VoidCallback? onCancel;
 
   @override
   Widget build(BuildContext context) {
@@ -42,31 +49,40 @@ class ChatMessageBubble extends StatelessWidget {
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(10),
-              child: CachedNetworkImage(
-                httpHeaders: imageHeaders,
-                imageUrl: sizedImageUrl(
-                  message.content,
-                  logicalWidth: 200,
-                  pixelRatio: MediaQuery.devicePixelRatioOf(context),
-                ),
-                width: 200,
-                fit: BoxFit.cover,
-                placeholder:
-                    (_, __) => const SizedBox(
-                      width: 200,
-                      height: 120,
-                      child: Center(
-                        child: CircularProgressIndicator(strokeWidth: 2),
+              child:
+                  message.isLocal
+                      ? _localImage()
+                      : CachedNetworkImage(
+                        httpHeaders: imageHeaders,
+                        imageUrl: sizedImageUrl(
+                          message.content,
+                          logicalWidth: 200,
+                          pixelRatio: MediaQuery.devicePixelRatioOf(context),
+                        ),
+                        width: 200,
+                        fit: BoxFit.cover,
+                        placeholder:
+                            (_, __) => const SizedBox(
+                              width: 200,
+                              height: 120,
+                              child: Center(
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              ),
+                            ),
+                        errorWidget:
+                            (_, __, ___) => const SizedBox(
+                              width: 200,
+                              height: 120,
+                              child: Icon(
+                                Icons.broken_image,
+                                color: Colors.white70,
+                              ),
+                            ),
                       ),
-                    ),
-                errorWidget:
-                    (_, __, ___) => const SizedBox(
-                      width: 200,
-                      height: 120,
-                      child: Icon(Icons.broken_image, color: Colors.white70),
-                    ),
-              ),
             ),
+            if (message.isLocal) Positioned.fill(child: _uploadOverlay()),
             Positioned(
               bottom: 4,
               right: 8,
@@ -111,6 +127,63 @@ class ChatMessageBubble extends StatelessWidget {
             maxWidth: MediaQuery.of(context).size.width * 0.8,
           ),
           child: bubble,
+        ),
+      ),
+    );
+  }
+
+  /// The photo straight from this device, shown while it uploads.
+  Widget _localImage() {
+    final path = message.content;
+    return kIsWeb
+        ? Image.network(path, width: 200, fit: BoxFit.cover)
+        : Image.file(File(path), width: 200, fit: BoxFit.cover);
+  }
+
+  /// Dimmed spinner with a cancel button while uploading; retry and discard if it failed.
+  Widget _uploadOverlay() {
+    final failed = message.status == MessageStatus.failed;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(10),
+      child: ColoredBox(
+        color: Colors.black45,
+        child: Center(
+          child:
+              failed
+                  ? Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton.filled(
+                        tooltip: 'Retry',
+                        onPressed: onRetry,
+                        icon: const Icon(Icons.refresh),
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton.filled(
+                        tooltip: 'Discard',
+                        onPressed: onCancel,
+                        icon: const Icon(Icons.close),
+                      ),
+                    ],
+                  )
+                  : Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      const SizedBox(
+                        width: 48,
+                        height: 48,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 3,
+                          color: Colors.white,
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Cancel',
+                        onPressed: onCancel,
+                        icon: const Icon(Icons.close, color: Colors.white),
+                      ),
+                    ],
+                  ),
         ),
       ),
     );
