@@ -33,18 +33,20 @@ Map<String, String>? get imageHeaders =>
         ? const {'ngrok-skip-browser-warning': 'true'}
         : null;
 
-/// Photos sent from a build that talked to the server directly (localhost, an emulator or a LAN
-/// address) are stored with that address, which no other device can reach. Re-point those at
-/// the server this app talks to; every other URL is returned untouched.
+/// Uploaded photos are stored with the address the sender used (localhost, an emulator, a LAN
+/// IP or the ngrok domain), which another device or build may not be able to reach. Every
+/// photo of ours lives on the one server this app talks to, so point `/uploads/` URLs at it.
+/// Anything else is returned untouched.
 String resolveUploadUrl(String url, {String? apiUrl}) {
   final uri = Uri.tryParse(url);
-  if (uri == null ||
-      !uri.path.startsWith('/uploads/') ||
-      !_isLocalHost(uri.host)) {
+  if (uri == null || !uri.path.startsWith('/uploads/')) return url;
+  final api = Uri.tryParse(apiUrl ?? AppConfig.apiUrl);
+  if (api == null || api.host.isEmpty) return url;
+  if (api.scheme == uri.scheme &&
+      api.host == uri.host &&
+      (api.hasPort ? api.port : null) == (uri.hasPort ? uri.port : null)) {
     return url;
   }
-  final api = Uri.tryParse(apiUrl ?? AppConfig.apiUrl);
-  if (api == null || api.host == uri.host) return url;
   // Built from scratch: Uri.replace would keep the old port when the new address has none.
   return Uri(
     scheme: api.scheme,
@@ -54,10 +56,3 @@ String resolveUploadUrl(String url, {String? apiUrl}) {
     query: uri.hasQuery ? uri.query : null,
   ).toString();
 }
-
-bool _isLocalHost(String host) =>
-    host == 'localhost' ||
-    host == '10.0.2.2' ||
-    host.startsWith('127.') ||
-    host.startsWith('192.168.') ||
-    host.startsWith('10.');

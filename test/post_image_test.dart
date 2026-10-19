@@ -3,7 +3,7 @@ import 'package:cedar_roots/shared/widgets/post_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-const upload = 'https://example.ngrok-free.app/uploads/photo.jpg';
+const upload = 'http://localhost:3000/uploads/photo.jpg';
 
 Future<void> pump(
   WidgetTester tester, {

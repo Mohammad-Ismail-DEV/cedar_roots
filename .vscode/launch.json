@@ -14,7 +14,7 @@
             "request": "launch",
             "type": "dart",
             "deviceId": "chrome",
-            "args": ["--dart-define-from-file=env/dev.json"]
+            "args": ["--dart-define-from-file=env/web.json"]
         },
         {
             "name": "cedar_roots (profile mode)",

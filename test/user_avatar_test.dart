@@ -3,7 +3,7 @@ import 'package:cedar_roots/shared/widgets/user_avatar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-const upload = 'https://example.ngrok-free.app/uploads/a.jpg';
+const upload = 'http://localhost:3000/uploads/a.jpg';
 
 Future<void> pump(WidgetTester tester, UserAvatar avatar) {
   tester.view.devicePixelRatio = 3;

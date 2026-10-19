@@ -1,7 +1,7 @@
 import 'package:cedar_roots/core/image_url.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-const upload = 'https://example.ngrok-free.app/uploads/photo.jpg';
+const upload = 'http://localhost:3000/uploads/photo.jpg';
 
 String sized(String url, double logicalWidth, [double pixelRatio = 3]) =>
     sizedImageUrl(url, logicalWidth: logicalWidth, pixelRatio: pixelRatio);
@@ -40,8 +40,11 @@ void main() {
   group('resolveUploadUrl', () {
     const api = 'https://real.ngrok-free.app';
 
-    test('leaves reachable and foreign URLs alone', () {
-      expect(resolveUploadUrl(upload, apiUrl: api), upload);
+    test('leaves URLs already on this server and foreign URLs alone', () {
+      expect(
+        resolveUploadUrl('$api/uploads/a.jpg', apiUrl: api),
+        '$api/uploads/a.jpg',
+      );
       expect(
         resolveUploadUrl('https://example.com/pic.jpg', apiUrl: api),
         'https://example.com/pic.jpg',
@@ -53,6 +56,8 @@ void main() {
         'localhost:3000',
         '10.0.2.2:3000',
         '192.168.1.5:3000',
+        'old-name.ngrok-free.app',
+        'old-name.ngrok-free.app',
       ]) {
         expect(
           resolveUploadUrl('http://$host/uploads/a.jpg', apiUrl: api),
