@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/navigation.dart';
 import 'core/providers.dart';
+import 'features/chat/delivery_receipts.dart';
 import 'features/notifications/push_handler.dart';
 import 'features/shell/nav_bar.dart';
 
@@ -14,6 +15,7 @@ class CedarRootsApp extends ConsumerWidget {
     // Both follow the signed-in session for the whole app lifetime.
     ref.watch(socketLifecycleProvider);
     ref.watch(pushLifecycleProvider);
+    ref.watch(deliveryReceiptsProvider);
 
     return MaterialApp(
       navigatorObservers: [routeObserver],

@@ -36,6 +36,9 @@ class SocketClient {
           .setTransports(['websocket'])
           .setAuth({'token': token})
           .disableAutoConnect()
+          // Without this the library reuses one connection per URL, so a second sign-in
+          // (account switch) would silently keep the first user's token.
+          .enableForceNew()
           .build(),
     );
     _socket = socket;

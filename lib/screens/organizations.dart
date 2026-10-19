@@ -101,20 +101,19 @@ class _OrganizationsScreenState extends State<OrganizationsScreen> {
   }
 
   void _navigateToOrganization(int organizationId) async {
-  if (!mounted) return;
+    if (!mounted) return;
 
-  final result = await Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (_) => OrganizationScreen(organizationId: organizationId),
-    ),
-  );
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => OrganizationScreen(organizationId: organizationId),
+      ),
+    );
 
-  if (result == true && mounted) {
-    _fetchOrganizations(); // Refresh list if an org was deleted
+    if (result == true && mounted) {
+      _fetchOrganizations(); // Refresh list if an org was deleted
+    }
   }
-}
-
 
   @override
   Widget build(BuildContext context) {

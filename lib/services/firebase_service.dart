@@ -1,5 +1,5 @@
 import 'package:cedar_roots/main.dart';
-import 'package:cedar_roots/screens/chat.dart';
+import 'package:cedar_roots/features/chat/chat_screen.dart';
 import 'package:cedar_roots/screens/event_details.dart';
 import 'package:cedar_roots/screens/post_details.dart';
 import 'package:cedar_roots/services/socket_service.dart';
@@ -42,89 +42,103 @@ class FirebaseNotificationService {
         AndroidInitializationSettings('@mipmap/ic_launcher');
     const InitializationSettings initializationSettings =
         InitializationSettings(android: initializationSettingsAndroid);
-    await _flutterLocalNotificationsPlugin.initialize(initializationSettings,
-        onDidReceiveNotificationResponse: (response) {
-      // Can also be used to route when tapped while app is running
-    });
+    await _flutterLocalNotificationsPlugin.initialize(
+      initializationSettings,
+      onDidReceiveNotificationResponse: (response) {
+        // Can also be used to route when tapped while app is running
+      },
+    );
   }
 
   void _handleMessageNavigation(RemoteMessage message) async {
-  final prefs = await SharedPreferences.getInstance();
-  final userId = prefs.getInt('user_id');
-  if (userId == null) return;
+    final prefs = await SharedPreferences.getInstance();
+    final userId = prefs.getInt('user_id');
+    if (userId == null) return;
 
-  final type = message.data['notificationType'];
-  switch (type) {
-    case 'chat':
-      final senderId = int.tryParse(message.data['senderId'] ?? '');
-      final senderName = message.data['senderName'] ?? 'User';
-      if (senderId != null) {
-        navigatorKey.currentState?.push(
-          MaterialPageRoute(
-            builder: (context) =>
-                ChatScreen(receiverId: senderId, name: senderName),
-          ),
-        );
-      }
-      break;
+    final type = message.data['notificationType'];
+    switch (type) {
+      case 'chat':
+        final senderId = int.tryParse(message.data['senderId'] ?? '');
+        final senderName = message.data['senderName'] ?? 'User';
+        if (senderId != null) {
+          navigatorKey.currentState?.push(
+            MaterialPageRoute(
+              builder:
+                  (context) =>
+                      ChatScreen(receiverId: senderId, name: senderName),
+            ),
+          );
+        }
+        break;
 
-    case 'comment':
-      final postId = int.tryParse(message.data['postId'] ?? '');
+      case 'comment':
+        final postId = int.tryParse(message.data['postId'] ?? '');
         if (postId != null) {
           navigatorKey.currentState?.push(
             MaterialPageRoute(
-              builder: (context) => PostDetailsScreen(postId: postId, userId: userId),
+              builder:
+                  (context) =>
+                      PostDetailsScreen(postId: postId, userId: userId),
             ),
           );
         }
         break;
 
-    case 'like':
-      final postId = int.tryParse(message.data['postId'] ?? '');
-      if (postId != null) {
-        navigatorKey.currentState?.push(
-          MaterialPageRoute(
-            builder: (context) => PostDetailsScreen(postId: postId, userId: userId),
-          ),
-        );
-      }
-      break;
+      case 'like':
+        final postId = int.tryParse(message.data['postId'] ?? '');
+        if (postId != null) {
+          navigatorKey.currentState?.push(
+            MaterialPageRoute(
+              builder:
+                  (context) =>
+                      PostDetailsScreen(postId: postId, userId: userId),
+            ),
+          );
+        }
+        break;
 
-    case 'event_announcement':
-      final eventId = int.tryParse(message.data['eventId'] ?? '');
+      case 'event_announcement':
+        final eventId = int.tryParse(message.data['eventId'] ?? '');
         if (eventId != null) {
           navigatorKey.currentState?.push(
             MaterialPageRoute(
-              builder: (context) => EventDetailsScreen(eventId: eventId, userId: userId),
+              builder:
+                  (context) =>
+                      EventDetailsScreen(eventId: eventId, userId: userId),
             ),
           );
         }
         break;
-    case 'new_event':
-      final eventId = int.tryParse(message.data['eventId'] ?? '');
-      if (eventId != null) {
-        navigatorKey.currentState?.push(
-          MaterialPageRoute(
-            builder: (context) => EventDetailsScreen(eventId: eventId, userId: userId),
-          ),
-        );
-      }
-      break;
+      case 'new_event':
+        final eventId = int.tryParse(message.data['eventId'] ?? '');
+        if (eventId != null) {
+          navigatorKey.currentState?.push(
+            MaterialPageRoute(
+              builder:
+                  (context) =>
+                      EventDetailsScreen(eventId: eventId, userId: userId),
+            ),
+          );
+        }
+        break;
 
-    default:
-      // No action
-      break;
+      default:
+        // No action
+        break;
+    }
   }
-}
 
   void _showNotification(
-      RemoteNotification notification, Map<String, dynamic> data) async {
-    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-      'default_channel',
-      'Default',
-      importance: Importance.max,
-      priority: Priority.high,
-    );
+    RemoteNotification notification,
+    Map<String, dynamic> data,
+  ) async {
+    const AndroidNotificationDetails androidDetails =
+        AndroidNotificationDetails(
+          'default_channel',
+          'Default',
+          importance: Importance.max,
+          priority: Priority.high,
+        );
 
     const NotificationDetails platformDetails = NotificationDetails(
       android: androidDetails,

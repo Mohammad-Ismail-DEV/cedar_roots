@@ -32,6 +32,13 @@ final socketClientProvider = Provider<SocketClient>((ref) {
   return client;
 });
 
+/// Whether the socket is currently connected (for "connecting..." banners).
+final socketConnectedProvider = StreamProvider.autoDispose<bool>((ref) async* {
+  final socket = ref.watch(socketClientProvider);
+  yield socket.isConnected;
+  yield* socket.connection;
+});
+
 /// Keeps the socket connected exactly while someone is signed in.
 /// Watch this once near the app root.
 final socketLifecycleProvider = Provider<void>((ref) {

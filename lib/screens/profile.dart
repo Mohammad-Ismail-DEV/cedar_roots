@@ -11,7 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'package:cedar_roots/features/auth/login_screen.dart';
 import 'package:cedar_roots/screens/connections.dart';
-import 'package:cedar_roots/screens/chat.dart';
+import 'package:cedar_roots/features/chat/chat_screen.dart';
 import 'package:cedar_roots/features/settings/settings_screen.dart';
 import 'package:cedar_roots/components/user_info.dart';
 import 'package:cedar_roots/components/comment_section.dart';

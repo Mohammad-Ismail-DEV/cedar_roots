@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/navigation.dart';
-import '../../screens/chat.dart';
+import '../chat/chat_screen.dart';
 import '../../screens/event_details.dart';
 import '../../screens/organization.dart';
 import '../../screens/post_details.dart';

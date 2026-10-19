@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:cedar_roots/screens/chat.dart';
+import 'package:cedar_roots/features/chat/chat_screen.dart';
 import 'package:cedar_roots/screens/organization.dart';
 import 'package:cedar_roots/screens/post_details.dart';
 import 'package:flutter/material.dart';

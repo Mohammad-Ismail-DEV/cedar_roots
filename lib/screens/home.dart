@@ -11,7 +11,7 @@ import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cedar_roots/components/comment_section.dart';
 import 'package:cedar_roots/components/user_post.dart';
-import 'package:cedar_roots/screens/chats.dart';
+import 'package:cedar_roots/features/chat/chats_screen.dart';
 import 'package:cedar_roots/screens/event_details.dart';
 import 'package:cedar_roots/services/api_service.dart';
 import 'package:cedar_roots/services/firebase_service.dart';
