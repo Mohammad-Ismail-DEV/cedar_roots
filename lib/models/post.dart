@@ -61,6 +61,17 @@ class Post {
 
   bool isLikedBy(int userId) => likes.any((l) => l.userId == userId);
 
+  Post copyWith({List<Comment>? comments, List<Like>? likes}) => Post(
+    id: id,
+    userId: userId,
+    content: content,
+    imageUrl: imageUrl,
+    createdAt: createdAt,
+    author: author,
+    comments: comments ?? this.comments,
+    likes: likes ?? this.likes,
+  );
+
   factory Post.fromJson(Map<String, dynamic> json) => Post(
     id: asInt(json['id']),
     userId: asInt(json['user_id']),

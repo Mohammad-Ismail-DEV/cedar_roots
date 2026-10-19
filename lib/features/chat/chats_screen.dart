@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/session.dart';
 import '../../core/ui.dart';
-import '../../screens/connections.dart';
+import '../connections/connections_screen.dart';
 import 'chat_screen.dart';
 import 'conversations_provider.dart';
 import 'widgets/chat_list_tile.dart';
@@ -88,7 +88,7 @@ class ChatsScreen extends ConsumerWidget {
                     () => Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => ConnectionsScreen(userId: me),
+                        builder: (_) => const ConnectionsScreen(),
                       ),
                     ),
                 child: const Icon(Icons.chat, size: 30, color: Colors.white),

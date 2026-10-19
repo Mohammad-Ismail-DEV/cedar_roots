@@ -94,6 +94,6 @@ class PushHandler {
     final type = data['notificationType'];
     AppLog.d('open notification type=$type', 'push');
     if (type == null) return;
-    openNotificationTarget(type: type, data: data, myUserId: userId);
+    openNotificationTarget(type: type, data: data);
   }
 }

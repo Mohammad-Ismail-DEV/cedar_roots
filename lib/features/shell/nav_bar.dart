@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/session.dart';
-import '../../screens/connections.dart';
-import '../../screens/home.dart';
-import '../../screens/notifications.dart';
-import '../../screens/profile.dart';
+import '../connections/connections_screen.dart';
+import '../notifications/notifications_screen.dart';
+import '../feed/home_screen.dart';
+import '../profile/profile_screen.dart';
 
 class NavBar extends ConsumerStatefulWidget {
   const NavBar({super.key, this.initialIndex = 0});
@@ -21,14 +20,11 @@ class _NavBarState extends ConsumerState<NavBar> {
 
   @override
   Widget build(BuildContext context) {
-    // Guests (not signed in) can still browse; screens treat userId 0 as "nobody".
-    final userId = ref.watch(currentUserIdProvider) ?? 0;
-
     final screens = <Widget>[
-      HomeScreen(),
-      ConnectionsScreen(userId: userId),
-      NotificationsScreen(),
-      ProfileScreen(userId: userId),
+      const HomeScreen(),
+      const ConnectionsScreen(),
+      const NotificationsScreen(),
+      const ProfileScreen(),
     ];
 
     return Scaffold(

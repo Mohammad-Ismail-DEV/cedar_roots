@@ -36,19 +36,24 @@ class PostRepository {
     return list.map(Post.fromJson).toList();
   }
 
+  Future<List<Post>> fetchByAuthor(int authorId) async {
+    final data = await _api.get('/posts', query: {'author_id': authorId});
+    return asMapList(data).map(Post.fromJson).toList();
+  }
+
   Future<Post> getById(int id) async =>
       Post.fromJson(asMap(await _api.get('/posts/$id'))!);
 
   Future<void> create({required String content, String? imageUrl}) =>
       _api.post('/posts', body: {'content': content, 'image_url': imageUrl});
 
-  Future<void> update(int id, {String? content, String? imageUrl}) => _api.put(
-    '/posts/$id',
-    body: {
-      if (content != null) 'content': content,
-      if (imageUrl != null) 'image_url': imageUrl,
-    },
-  );
+  /// Sends both fields; a null [imageUrl] removes the post's image.
+  Future<void> update(
+    int id, {
+    required String content,
+    required String? imageUrl,
+  }) =>
+      _api.put('/posts/$id', body: {'content': content, 'image_url': imageUrl});
 
   Future<void> delete(int id) => _api.delete('/posts/$id');
 
