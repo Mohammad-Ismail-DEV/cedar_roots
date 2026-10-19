@@ -43,6 +43,7 @@ class ChatMessageBubble extends StatelessWidget {
             ClipRRect(
               borderRadius: BorderRadius.circular(10),
               child: CachedNetworkImage(
+                httpHeaders: imageHeaders,
                 imageUrl: sizedImageUrl(
                   message.content,
                   logicalWidth: 200,

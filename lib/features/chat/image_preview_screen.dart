@@ -61,6 +61,7 @@ class _ImagePreviewScreenState extends State<ImagePreviewScreen> {
                 (context, index) => PhotoViewGalleryPageOptions(
                   // The original, at full resolution, so zooming stays sharp.
                   imageProvider: CachedNetworkImageProvider(
+                    headers: imageHeaders,
                     widget.imageUrls[index],
                   ),
                   heroAttributes: PhotoViewHeroAttributes(
@@ -76,6 +77,7 @@ class _ImagePreviewScreenState extends State<ImagePreviewScreen> {
                   alignment: Alignment.center,
                   children: [
                     CachedNetworkImage(
+                      httpHeaders: imageHeaders,
                       imageUrl: sizedImageUrl(
                         widget.imageUrls[_current],
                         logicalWidth: MediaQuery.sizeOf(context).width,

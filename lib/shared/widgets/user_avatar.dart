@@ -70,6 +70,7 @@ class UserAvatar extends StatelessWidget {
         _circle(context, allowNetwork: false),
         ClipOval(
           child: CachedNetworkImage(
+            httpHeaders: imageHeaders,
             imageUrl: sizedImageUrl(
               imageUrl!,
               logicalWidth: diameter,
@@ -100,6 +101,7 @@ class UserAvatar extends StatelessWidget {
       }
       if (!allowNetwork) return null;
       return CachedNetworkImageProvider(
+        headers: imageHeaders,
         sizedImageUrl(
           imageUrl!,
           logicalWidth: radius * 2,

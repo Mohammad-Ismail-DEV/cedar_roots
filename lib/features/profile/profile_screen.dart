@@ -83,6 +83,7 @@ class _Profile extends ConsumerWidget {
                     child:
                         url != null && url.isNotEmpty
                             ? CachedNetworkImage(
+                              httpHeaders: imageHeaders,
                               imageUrl: sizedImageUrl(
                                 url,
                                 logicalWidth: MediaQuery.sizeOf(ctx).width,

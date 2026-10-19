@@ -129,6 +129,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                     else if (_existingImageUrl != null)
                       _Preview(
                         image: CachedNetworkImage(
+                          httpHeaders: imageHeaders,
                           imageUrl: sizedImageUrl(
                             _existingImageUrl!,
                             logicalWidth: MediaQuery.sizeOf(context).width,

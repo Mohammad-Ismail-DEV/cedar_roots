@@ -28,6 +28,7 @@ class PostImage extends StatelessWidget {
             child: ConstrainedBox(
               constraints: BoxConstraints(maxHeight: screen.height * 0.75),
               child: CachedNetworkImage(
+                httpHeaders: imageHeaders,
                 imageUrl: sizedImageUrl(
                   url,
                   logicalWidth: width,

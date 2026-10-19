@@ -93,6 +93,7 @@ class SearchOverlay extends ConsumerWidget {
                 backgroundImage:
                     post.imageUrl != null
                         ? CachedNetworkImageProvider(
+                          headers: imageHeaders,
                           sizedImageUrl(
                             post.imageUrl!,
                             logicalWidth: 40,

@@ -122,6 +122,7 @@ class _OrganizationFormScreenState
     if (_newLogo != null) return FileImage(File(_newLogo!.path));
     if (_existingLogoUrl != null && _existingLogoUrl!.isNotEmpty) {
       return CachedNetworkImageProvider(
+        headers: imageHeaders,
         sizedImageUrl(
           _existingLogoUrl!,
           logicalWidth: 96,

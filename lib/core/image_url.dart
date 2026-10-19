@@ -1,3 +1,5 @@
+import 'config.dart';
+
 /// Sizes the server can produce (must match backend/src/middleware/imageVariants.js).
 const _widths = [128, 256, 512, 768, 1080, 1600];
 
@@ -22,3 +24,10 @@ String sizedImageUrl(
       .replace(queryParameters: {...uri.queryParameters, 'w': '$width'})
       .toString();
 }
+
+/// Headers for loading our own images. ngrok's free tier answers browsers with an HTML warning
+/// page unless this header is present, which shows up as a broken image on Flutter web.
+Map<String, String>? get imageHeaders =>
+    AppConfig.apiUrl.contains('ngrok')
+        ? const {'ngrok-skip-browser-warning': 'true'}
+        : null;
