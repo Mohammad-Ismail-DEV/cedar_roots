@@ -27,7 +27,7 @@ class SocketService {
   List<Map<String, dynamic>> messages = [];
 
   SocketService() {
-    socket = IO.io('http://13.50.2.82:3000', <String, dynamic>{
+    socket = IO.io('http://localhost:3000', <String, dynamic>{
       'transports': ['websocket'],
       'autoConnect': false,
     });

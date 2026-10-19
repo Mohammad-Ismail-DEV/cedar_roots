@@ -10,7 +10,7 @@ class ApiServices {
 
   ApiServices._internal();
 
-  final String baseUrl = 'http://13.50.2.82:3000';
+  final String baseUrl = 'http://localhost:3000';
   String? _token;
 
   Future<void> init() async {
@@ -52,7 +52,7 @@ class ApiServices {
   Future<String?> uploadFile(XFile file) async {
     final req = http.MultipartRequest(
       "POST",
-      Uri.parse("http://13.50.2.82:3000/upload"),
+      Uri.parse("http://localhost:3000/upload"),
     );
     req.files.add(await http.MultipartFile.fromPath('file', file.path));
 

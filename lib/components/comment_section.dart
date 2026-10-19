@@ -30,7 +30,7 @@ class _CommentSectionState extends State<CommentSection> {
     _currentUserId = prefs.getInt('user_id');
 
     final res = await http.get(
-      Uri.parse('http://13.50.2.82:3000/posts/${widget.postId}'),
+      Uri.parse('http://localhost:3000/posts/${widget.postId}'),
     );
     if (res.statusCode == 200) {
       final data = json.decode(res.body);
@@ -59,7 +59,7 @@ class _CommentSectionState extends State<CommentSection> {
       return;
 
     final res = await http.post(
-      Uri.parse('http://13.50.2.82:3000/comments'),
+      Uri.parse('http://localhost:3000/comments'),
       headers: {
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',
@@ -111,7 +111,7 @@ class _CommentSectionState extends State<CommentSection> {
     if (confirmed != true) return;
 
     final res = await http.delete(
-      Uri.parse('http://13.50.2.82:3000/comments/$commentId'),
+      Uri.parse('http://localhost:3000/comments/$commentId'),
       headers: {'Authorization': 'Bearer $token'},
     );
 

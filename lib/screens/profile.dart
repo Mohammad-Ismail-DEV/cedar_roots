@@ -65,7 +65,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (_) => NavBar(initialIndex: 4)),
+            MaterialPageRoute(builder: (_) => NavBar(initialIndex: 3)),
           );
         });
       } else {
@@ -82,12 +82,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     try {
       final userRes = await http.get(
-        Uri.parse("http://13.50.2.82:3000/users/$userId"),
+        Uri.parse("http://localhost:3000/users/$userId"),
         headers: {'Authorization': 'Bearer $token'},
       );
 
       final connCountRes = await http.get(
-        Uri.parse("http://13.50.2.82:3000/connections/user/$userId/accepted"),
+        Uri.parse("http://localhost:3000/connections/user/$userId/accepted"),
         headers: {'Authorization': 'Bearer $token'},
       );
 
@@ -96,7 +96,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (_currentUserId != null && userId != _currentUserId) {
         final connStatusRes = await http.get(
           Uri.parse(
-            "http://13.50.2.82:3000/connections/status/${_currentUserId!}/$userId",
+            "http://localhost:3000/connections/status/${_currentUserId!}/$userId",
           ),
           headers: {'Authorization': 'Bearer $token'},
         );
@@ -134,7 +134,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _fetchUserPosts(int userId, String token) async {
     try {
       final response = await http.get(
-        Uri.parse("http://13.50.2.82:3000/posts"),
+        Uri.parse("http://localhost:3000/posts"),
         headers: {'Authorization': 'Bearer $token'},
       );
 
@@ -261,7 +261,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('auth_token');
       final response = await http.delete(
-        Uri.parse("http://13.50.2.82:3000/posts/$postId"),
+        Uri.parse("http://localhost:3000/posts/$postId"),
         headers: {'Authorization': 'Bearer $token'},
       );
       if (response.statusCode == 200) {
@@ -314,7 +314,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void toggleLikeForPost(int postId, bool isLiked) async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('auth_token');
-    final url = "http://13.50.2.82:3000/posts/$postId/like";
+    final url = "http://localhost:3000/posts/$postId/like";
 
     final response = await http.post(
       Uri.parse(url),
@@ -671,7 +671,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     final file = File(croppedFile.path);
 
-    final uri = Uri.parse('http://13.50.2.82:3000/upload');
+    final uri = Uri.parse('http://localhost:3000/upload');
     final request = http.MultipartRequest('POST', uri);
     request.files.add(await http.MultipartFile.fromPath('file', file.path));
 
@@ -693,7 +693,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (userId == null || token == null) return;
 
     final response = await http.put(
-      Uri.parse('http://13.50.2.82:3000/users/$userId'),
+      Uri.parse('http://localhost:3000/users/$userId'),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',

@@ -121,7 +121,7 @@ class _HomeScreenState extends State<HomeScreen> {
       final token = prefs.getString('auth_token');
 
       final response = await http.get(
-        Uri.parse('http://13.50.2.82:3000/search?q=$query'),
+        Uri.parse('http://localhost:3000/search?q=$query'),
         headers: {'Authorization': 'Bearer $token'},
       );
 
@@ -444,7 +444,7 @@ class _HomeScreenState extends State<HomeScreen> {
       final token = prefs.getString('auth_token');
 
       final response = await http.post(
-        Uri.parse("http://13.50.2.82:3000/posts/$postId/like"),
+        Uri.parse("http://localhost:3000/posts/$postId/like"),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
@@ -508,7 +508,7 @@ class _HomeScreenState extends State<HomeScreen> {
       final token = prefs.getString('auth_token');
 
       final response = await http.delete(
-        Uri.parse("http://13.50.2.82:3000/posts/$postId"),
+        Uri.parse("http://localhost:3000/posts/$postId"),
         headers: {'Authorization': 'Bearer $token'},
       );
 

@@ -42,12 +42,12 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
 
     try {
       final res = await http.get(
-        Uri.parse('http://13.50.2.82:3000/posts/${widget.postId}'),
+        Uri.parse('http://localhost:3000/posts/${widget.postId}'),
         headers: {'Authorization': 'Bearer $token'},
       );
 
       final commentsRes = await http.get(
-        Uri.parse('http://13.50.2.82:3000/comments/post/${widget.postId}'),
+        Uri.parse('http://localhost:3000/comments/post/${widget.postId}'),
         headers: {'Authorization': 'Bearer $token'},
       );
 
@@ -74,7 +74,7 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
 
     try {
       final res = await http.post(
-        Uri.parse('http://13.50.2.82:3000/posts/${widget.postId}/like'),
+        Uri.parse('http://localhost:3000/posts/${widget.postId}/like'),
         headers: {'Authorization': 'Bearer $token'},
       );
 
@@ -95,7 +95,7 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
 
     try {
       final res = await http.post(
-        Uri.parse('http://13.50.2.82:3000/comments'),
+        Uri.parse('http://localhost:3000/comments'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',

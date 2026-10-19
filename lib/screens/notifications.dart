@@ -87,7 +87,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
     // Then fetch from API
     final res = await http.get(
-      Uri.parse('http://13.50.2.82:3000/notifications'),
+      Uri.parse('http://localhost:3000/notifications'),
       headers: {'Authorization': 'Bearer $_token'},
     );
 
@@ -104,7 +104,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   Future<void> _markAsRead(int id) async {
     final res = await http.put(
-      Uri.parse('http://13.50.2.82:3000/notifications/$id/read'),
+      Uri.parse('http://localhost:3000/notifications/$id/read'),
       headers: {'Authorization': 'Bearer $_token'},
     );
 
@@ -115,7 +115,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   Future<void> _deleteNotification(int id) async {
     final res = await http.delete(
-      Uri.parse('http://13.50.2.82:3000/notifications/$id'),
+      Uri.parse('http://localhost:3000/notifications/$id'),
       headers: {'Authorization': 'Bearer $_token'},
     );
 

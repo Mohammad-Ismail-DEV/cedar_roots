@@ -39,12 +39,12 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
     final token = prefs.getString('auth_token');
 
     final eventRes = await http.get(
-      Uri.parse('http://13.50.2.82:3000/events/${widget.eventId}'),
+      Uri.parse('http://localhost:3000/events/${widget.eventId}'),
       headers: {'Authorization': 'Bearer $token'},
     );
 
     final announcementsRes = await http.get(
-      Uri.parse('http://13.50.2.82:3000/announcements/${widget.eventId}'),
+      Uri.parse('http://localhost:3000/announcements/${widget.eventId}'),
       headers: {'Authorization': 'Bearer $token'},
     );
 
@@ -60,14 +60,14 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
       if (widget.userId != 0) {
         final participantsRes = await http.get(
           Uri.parse(
-            'http://13.50.2.82:3000/events/${widget.eventId}/participants',
+            'http://localhost:3000/events/${widget.eventId}/participants',
           ),
           headers: {'Authorization': 'Bearer $token'},
         );
 
         final orgId = e['organization_id'];
         final orgRes = await http.get(
-          Uri.parse('http://13.50.2.82:3000/organization_members/$orgId'),
+          Uri.parse('http://localhost:3000/organization_members/$orgId'),
           headers: {'Authorization': 'Bearer $token'},
         );
 
@@ -105,7 +105,7 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
     final token = prefs.getString('auth_token');
 
     final res = await http.post(
-      Uri.parse('http://13.50.2.82:3000/events/${widget.eventId}/join'),
+      Uri.parse('http://localhost:3000/events/${widget.eventId}/join'),
       headers: {'Authorization': 'Bearer $token'},
     );
 
@@ -120,7 +120,7 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
 
     final res = await http.delete(
       Uri.parse(
-        'http://13.50.2.82:3000/events/${widget.eventId}/leave/${widget.userId}',
+        'http://localhost:3000/events/${widget.eventId}/leave/${widget.userId}',
       ),
       headers: {'Authorization': 'Bearer $token'},
     );
@@ -138,7 +138,7 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
     final token = prefs.getString('auth_token');
 
     final res = await http.post(
-      Uri.parse('http://13.50.2.82:3000/announcements'),
+      Uri.parse('http://localhost:3000/announcements'),
       headers: {
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',
