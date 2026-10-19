@@ -5,7 +5,9 @@ import 'package:intl/intl.dart';
 import '../../core/session.dart';
 import '../../core/ui.dart';
 import '../../models/post.dart';
+import '../../shared/widgets/post_image.dart';
 import '../../shared/widgets/user_avatar.dart';
+import '../chat/image_preview_screen.dart';
 import '../feed/post_details_provider.dart';
 
 class PostDetailsScreen extends ConsumerStatefulWidget {
@@ -122,7 +124,20 @@ class _PostDetailsScreenState extends ConsumerState<PostDetailsScreen> {
               ),
               const SizedBox(height: 16),
               if (post.imageUrl != null && post.imageUrl!.isNotEmpty)
-                Image.network(post.imageUrl!, fit: BoxFit.cover),
+                PostImage(
+                  url: post.imageUrl!,
+                  onTap:
+                      () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder:
+                              (_) => ImagePreviewScreen(
+                                imageUrls: [post.imageUrl!],
+                                initialIndex: 0,
+                              ),
+                        ),
+                      ),
+                ),
               const SizedBox(height: 12),
               Text(post.content),
               const SizedBox(height: 8),

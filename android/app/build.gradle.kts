@@ -18,6 +18,8 @@ if (keystorePropertiesFile.exists()) {
 android {
     namespace = "com.mohamad_and_hala.cedar_roots"
     compileSdk = 35
+    // Use the NDK already installed instead of letting Gradle download its default.
+    ndkVersion = "27.1.12297006"
 
     defaultConfig {
         applicationId = "com.mohamad_and_hala.cedar_roots"

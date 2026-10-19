@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../../models/post.dart';
+import '../../../shared/widgets/post_image.dart';
 import '../../../shared/widgets/user_avatar.dart';
 
 class PostCard extends StatelessWidget {
@@ -34,7 +35,6 @@ class PostCard extends StatelessWidget {
         post.createdAt == null
             ? ''
             : DateFormat('yyyy-MM-dd hh:mm a').format(post.createdAt!);
-    final imageSize = MediaQuery.of(context).size.width - 24;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -80,35 +80,7 @@ class PostCard extends StatelessWidget {
           if (post.imageUrl != null && post.imageUrl!.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 10),
-              child: GestureDetector(
-                onTap: onOpen,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.network(
-                    post.imageUrl!,
-                    height: imageSize,
-                    width: imageSize,
-                    fit: BoxFit.cover,
-                    loadingBuilder:
-                        (context, child, progress) =>
-                            progress == null
-                                ? child
-                                : SizedBox(
-                                  height: imageSize,
-                                  width: imageSize,
-                                  child: const Center(
-                                    child: CircularProgressIndicator(),
-                                  ),
-                                ),
-                    errorBuilder:
-                        (_, __, ___) => SizedBox(
-                          height: imageSize,
-                          width: imageSize,
-                          child: const Center(child: Icon(Icons.broken_image)),
-                        ),
-                  ),
-                ),
-              ),
+              child: PostImage(url: post.imageUrl!, onTap: onOpen),
             ),
           if (post.content.isNotEmpty)
             Padding(

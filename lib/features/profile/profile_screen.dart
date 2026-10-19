@@ -58,19 +58,37 @@ class _Profile extends ConsumerWidget {
     final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
     if (picked == null) return;
 
+    // Cropping is optional in spirit: it opens on the whole photo with a free-form frame,
+    // so confirming without touching it keeps the image as it is. Nothing forces a square.
     final cropped = await ImageCropper().cropImage(
       sourcePath: picked.path,
-      aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
       compressFormat: ImageCompressFormat.jpg,
-      compressQuality: 90,
+      compressQuality: 100,
       uiSettings: [
         AndroidUiSettings(
-          toolbarTitle: 'Crop Image',
+          toolbarTitle: 'Adjust photo',
           toolbarColor: Colors.blue,
           toolbarWidgetColor: Colors.white,
-          lockAspectRatio: true,
+          initAspectRatio: CropAspectRatioPreset.original,
+          lockAspectRatio: false,
+          aspectRatioPresets: const [
+            CropAspectRatioPreset.original,
+            CropAspectRatioPreset.square,
+            CropAspectRatioPreset.ratio4x3,
+            CropAspectRatioPreset.ratio16x9,
+          ],
         ),
-        IOSUiSettings(title: 'Crop Image', aspectRatioLockEnabled: true),
+        IOSUiSettings(
+          title: 'Adjust photo',
+          aspectRatioLockEnabled: false,
+          resetAspectRatioEnabled: true,
+          aspectRatioPresets: const [
+            CropAspectRatioPreset.original,
+            CropAspectRatioPreset.square,
+            CropAspectRatioPreset.ratio4x3,
+            CropAspectRatioPreset.ratio16x9,
+          ],
+        ),
       ],
     );
     if (cropped == null || !context.mounted) return;

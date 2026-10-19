@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../core/ui.dart';
@@ -43,29 +42,13 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
     super.dispose();
   }
 
-  Future<void> _pickAndCropImage() async {
+  /// Takes the photo exactly as it is: no cropping, no resizing, no recompression.
+  Future<void> _pickImage() async {
     final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
     if (picked == null) return;
 
-    final cropped = await ImageCropper().cropImage(
-      sourcePath: picked.path,
-      aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
-      compressFormat: ImageCompressFormat.jpg,
-      compressQuality: 90,
-      uiSettings: [
-        AndroidUiSettings(
-          toolbarTitle: 'Crop Image',
-          toolbarColor: Colors.blue,
-          toolbarWidgetColor: Colors.white,
-          lockAspectRatio: true,
-        ),
-        IOSUiSettings(title: 'Crop Image', aspectRatioLockEnabled: true),
-      ],
-    );
-    if (cropped == null) return;
-
     setState(() {
-      _newImage = File(cropped.path);
+      _newImage = File(picked.path);
       _existingImageUrl = null;
     });
   }
@@ -113,32 +96,50 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            TextField(
-              controller: _content,
-              maxLines: 5,
-              decoration: const InputDecoration(
-                hintText: "What's on your mind?",
-                border: OutlineInputBorder(),
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    TextField(
+                      controller: _content,
+                      maxLines: 5,
+                      decoration: const InputDecoration(
+                        hintText: "What's on your mind?",
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    // Previews keep the photo's own shape; nothing is cropped.
+                    if (_newImage != null)
+                      _Preview(
+                        image: Image.file(
+                          _newImage!,
+                          fit: BoxFit.contain,
+                          cacheWidth: 1080,
+                        ),
+                        onRemove: () => setState(() => _newImage = null),
+                      )
+                    else if (_existingImageUrl != null)
+                      _Preview(
+                        image: Image.network(
+                          _existingImageUrl!,
+                          fit: BoxFit.contain,
+                          cacheWidth: 1080,
+                        ),
+                        onRemove:
+                            () => setState(() => _existingImageUrl = null),
+                      )
+                    else
+                      OutlinedButton.icon(
+                        onPressed: _pickImage,
+                        icon: const Icon(Icons.image),
+                        label: const Text('Add Image'),
+                      ),
+                  ],
+                ),
               ),
             ),
             const SizedBox(height: 12),
-            if (_newImage != null)
-              _Preview(
-                image: Image.file(_newImage!, height: 150),
-                onRemove: () => setState(() => _newImage = null),
-              )
-            else if (_existingImageUrl != null)
-              _Preview(
-                image: Image.network(_existingImageUrl!, height: 150),
-                onRemove: () => setState(() => _existingImageUrl = null),
-              )
-            else
-              OutlinedButton.icon(
-                onPressed: _pickAndCropImage,
-                icon: const Icon(Icons.image),
-                label: const Text('Add Image'),
-              ),
-            const Spacer(),
             ElevatedButton(
               onPressed: _submitting ? null : _submit,
               style: ElevatedButton.styleFrom(
@@ -166,7 +167,12 @@ class _Preview extends StatelessWidget {
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        image,
+        ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(context).height * 0.5,
+          ),
+          child: SizedBox(width: double.infinity, child: image),
+        ),
         Positioned(
           top: 4,
           right: 4,
