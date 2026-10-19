@@ -1,4 +1,3 @@
-import 'dart:collection';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -8,7 +7,7 @@ import 'package:flutter/material.dart';
 /// least recently used entries are dropped.
 class _BlobCache {
   static const _maxEntries = 150;
-  static final _entries = LinkedHashMap<String, Uint8List>();
+  static final _entries = <String, Uint8List>{};
 
   static Uint8List? decode(String dataUri) {
     final cached = _entries.remove(dataUri);

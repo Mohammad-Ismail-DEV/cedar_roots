@@ -9,7 +9,6 @@
 // 4. Clean up:                  node scripts/e2e-users.js remove <id> <id>
 //
 // Without E2E_USERS the tests are skipped.
-import 'dart:async';
 import 'dart:convert';
 
 import 'package:cedar_roots/core/providers.dart';
@@ -103,8 +102,9 @@ void main() {
           next,
         ) {
           final last = next.messages.lastOrNull;
-          if (last != null && last.content == 'hello e2e')
+          if (last != null && last.content == 'hello e2e') {
             seenStatuses.add(last.status);
+          }
         });
 
         a.chat(b.userId).sendText('hello e2e');

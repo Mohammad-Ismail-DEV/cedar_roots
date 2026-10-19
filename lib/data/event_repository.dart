@@ -59,6 +59,8 @@ class EventRepository {
 
   Future<void> join(int eventId) => _api.post('/events/$eventId/join');
 
+  Future<void> leave(int eventId) => _api.delete('/events/$eventId/leave');
+
   Future<List<EventParticipant>> participants(int eventId) async {
     final data = await _api.get('/events/$eventId/participants');
     return asMapList(data).map(EventParticipant.fromJson).toList();
