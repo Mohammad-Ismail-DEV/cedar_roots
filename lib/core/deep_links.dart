@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../features/shell/app_routes.dart';
+import 'config.dart';
 import 'logger.dart';
 import 'navigation.dart';
 import 'session.dart';
@@ -13,6 +14,22 @@ const deepLinkScheme = 'cedarroots';
 
 /// The link people paste or tap to open a post: `cedarroots://post/123`.
 String postLink(int postId) => '$deepLinkScheme://post/$postId';
+
+/// The web link shared outside the app. Chat apps show a preview of the post from it, and its
+/// page has a button that opens the app at the post.
+String postShareUrl(int postId) => '${AppConfig.apiUrl}/p/$postId';
+
+/// What goes in the system share sheet: who posted, a bit of the text, then the link.
+String postShareText({String? author, String? content, required int postId}) {
+  final text = (content ?? '').trim();
+  final snippet =
+      text.length > 140 ? '${text.substring(0, 139).trimRight()}…' : text;
+  return [
+    '${author ?? 'A post'} on Cedar Roots',
+    if (snippet.isNotEmpty) '"$snippet"',
+    postShareUrl(postId),
+  ].join('\n\n');
+}
 
 enum DeepLinkKind { post, event, profile, organization }
 
@@ -26,6 +43,13 @@ class DeepLink {
 /// Understands `cedarroots://post/1`, `/event/2`, `/profile/3` and `/organization/4`.
 /// Anything else (another scheme, a bad id) is null.
 DeepLink? parseDeepLink(Uri uri) {
+  // The shared web link, https://<server>/p/123, opens the same post.
+  if ((uri.scheme == 'https' || uri.scheme == 'http') &&
+      uri.pathSegments.length == 2 &&
+      uri.pathSegments.first == 'p') {
+    final id = int.tryParse(uri.pathSegments[1]);
+    return id == null || id <= 0 ? null : DeepLink(DeepLinkKind.post, id);
+  }
   if (uri.scheme != deepLinkScheme) return null;
 
   final kind = switch (uri.host) {

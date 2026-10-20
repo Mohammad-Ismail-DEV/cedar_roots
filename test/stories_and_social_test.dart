@@ -155,6 +155,25 @@ void main() {
       );
     });
 
+    test(
+      'the shared web link opens the post and carries a preview-friendly text',
+      () {
+        final link = parseDeepLink(Uri.parse('https://example.test/p/7'));
+        expect(link?.kind, DeepLinkKind.post);
+        expect(link?.id, 7);
+        expect(parseDeepLink(Uri.parse('https://example.test/p/x')), isNull);
+
+        final text = postShareText(
+          author: 'Layla',
+          content: 'Plant trees',
+          postId: 7,
+        );
+        expect(text, startsWith('Layla on Cedar Roots'));
+        expect(text, contains('"Plant trees"'));
+        expect(text, endsWith('/p/7'));
+      },
+    );
+
     test('ignores everything else', () {
       expect(parseDeepLink(Uri.parse('https://example.com/post/1')), isNull);
       expect(parseDeepLink(Uri.parse('cedarroots://post/abc')), isNull);

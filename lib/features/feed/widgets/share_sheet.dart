@@ -53,10 +53,17 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
   }
 
   Future<void> _shareLink() async {
-    final author = widget.post.author?.name;
+    final post = widget.post;
     await Share.share(
-      '${author == null ? 'A post' : 'A post by $author'} on Cedar Roots: '
-      '${postLink(widget.post.id)}',
+      postShareText(
+        author: post.author?.name,
+        content: post.content,
+        postId: post.id,
+      ),
+      subject:
+          post.author?.name == null
+              ? null
+              : '${post.author!.name} on Cedar Roots',
     );
   }
 
