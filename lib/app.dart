@@ -8,9 +8,11 @@ import 'core/theme.dart';
 import 'core/theme_mode.dart';
 import 'features/chat/delivery_receipts.dart';
 import 'features/feed/feed_poller.dart';
+import 'features/feed/feed_provider.dart';
 import 'features/feed/live_post_updates.dart';
 import 'features/notifications/push_handler.dart';
 import 'features/shell/nav_bar.dart';
+import 'shared/widgets/splash_loader.dart';
 
 class CedarRootsApp extends ConsumerWidget {
   const CedarRootsApp({super.key});
@@ -33,7 +35,10 @@ class CedarRootsApp extends ConsumerWidget {
       theme: buildTheme(Brightness.light),
       darkTheme: buildTheme(Brightness.dark),
       themeMode: ref.watch(themeModeProvider),
-      home: const NavBar(),
+      home: SplashGate(
+        ready: !ref.watch(feedProvider).isLoading,
+        child: const NavBar(),
+      ),
     );
   }
 }

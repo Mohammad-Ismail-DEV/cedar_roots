@@ -6,6 +6,7 @@ import '../../core/theme.dart';
 import '../../core/time_label.dart';
 import '../../core/ui.dart';
 import '../../models/post.dart';
+import '../../shared/widgets/counted_icon_button.dart';
 import '../../shared/widgets/post_media.dart';
 import '../../shared/widgets/user_avatar.dart';
 import '../chat/image_preview_screen.dart';
@@ -251,9 +252,10 @@ class _PostDetailsScreenState extends ConsumerState<PostDetailsScreen> {
                       padding: const EdgeInsets.fromLTRB(4, 2, 4, 0),
                       child: Row(
                         children: [
-                          IconButton(
+                          CountedIconButton(
                             tooltip: 'Like',
                             onPressed: _toggleLike,
+                            count: post.likes.length,
                             icon: Icon(
                               isLiked ? Icons.favorite : Icons.favorite_border,
                               color:
@@ -261,6 +263,15 @@ class _PostDetailsScreenState extends ConsumerState<PostDetailsScreen> {
                                       ? palette.heart
                                       : Theme.of(context).colorScheme.onSurface,
                               size: 26,
+                            ),
+                          ),
+                          CountedIconButton(
+                            tooltip: 'Comments',
+                            onPressed: null,
+                            count: post.comments.length,
+                            icon: const Icon(
+                              Icons.mode_comment_outlined,
+                              size: 24,
                             ),
                           ),
                           IconButton(

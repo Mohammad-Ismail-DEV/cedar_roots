@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../shared/widgets/counted_icon_button.dart';
+
 import '../../../core/theme.dart';
 import '../../../core/time_label.dart';
 import '../../../models/post.dart';
@@ -164,18 +166,20 @@ class _PostCardState extends State<PostCard>
             padding: const EdgeInsets.fromLTRB(4, 2, 4, 0),
             child: Row(
               children: [
-                IconButton(
+                CountedIconButton(
                   tooltip: 'Like',
                   onPressed: widget.onLike,
+                  count: post.likes.length,
                   icon: Icon(
                     _liked ? Icons.favorite : Icons.favorite_border,
                     color: _liked ? palette.heart : text,
                     size: 26,
                   ),
                 ),
-                IconButton(
+                CountedIconButton(
                   tooltip: 'Comments',
                   onPressed: widget.onComment,
+                  count: comments,
                   icon: const Icon(Icons.mode_comment_outlined, size: 24),
                 ),
                 IconButton(

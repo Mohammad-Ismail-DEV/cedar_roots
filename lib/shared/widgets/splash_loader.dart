@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 /// The start-up screen: the logo mark where the native splash puts it, with a spinner below so
@@ -30,6 +32,50 @@ class SplashLoader extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Keeps the loading screen up until the first screen has its content (or a few seconds pass),
+/// so there is never a blank or half-empty frame after the logo.
+class SplashGate extends StatefulWidget {
+  const SplashGate({super.key, required this.ready, required this.child});
+
+  /// True once the first screen can show real content.
+  final bool ready;
+  final Widget child;
+
+  @override
+  State<SplashGate> createState() => _SplashGateState();
+}
+
+class _SplashGateState extends State<SplashGate> {
+  bool _gaveUp = false;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer(const Duration(seconds: 6), () {
+      if (mounted) setState(() => _gaveUp = true);
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final showApp = widget.ready || _gaveUp;
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 250),
+      child:
+          showApp
+              ? KeyedSubtree(key: const ValueKey('app'), child: widget.child)
+              : const SplashLoader(key: ValueKey('splash')),
     );
   }
 }
