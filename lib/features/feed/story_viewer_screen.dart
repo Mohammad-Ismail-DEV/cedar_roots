@@ -42,6 +42,7 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
     if (status == AnimationStatus.completed) _next();
   });
 
+  bool _loading = false;
   late int _group = widget.initialGroup;
   late int _index = widget.groups[widget.initialGroup].firstUnseenIndex;
 
@@ -70,7 +71,20 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
         ref.read(storiesProvider.notifier).markViewed(userId, storyId);
       }
     });
-    _progress.forward(from: 0);
+    // A photo story only starts counting down once the photo is on screen.
+    _loading = _story.isImage && _story.imageUrl != null;
+    _progress.value = 0;
+    if (!_loading) _progress.forward();
+  }
+
+  void _resume() {
+    if (!_loading) _progress.forward();
+  }
+
+  void _imageReady(int storyId) {
+    if (!_loading || storyId != _story.id) return;
+    _loading = false;
+    if (!_progress.isAnimating) _progress.forward();
   }
 
   void _close() => Navigator.of(context).maybePop();
@@ -117,7 +131,7 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
       isScrollControlled: true,
       builder: (_) => _ViewersSheet(storyId: story.id),
     );
-    if (mounted) _progress.forward();
+    if (mounted) _resume();
   }
 
   Future<void> _delete() async {
@@ -132,7 +146,7 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
     );
     if (!mounted) return;
     if (!confirmed) {
-      _progress.forward();
+      _resume();
       return;
     }
     try {
@@ -141,7 +155,7 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
     } catch (e) {
       if (!mounted) return;
       showErrorSnack(context, e);
-      _progress.forward();
+      _resume();
     }
   }
 
@@ -150,6 +164,7 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
     if (story.isImage && story.imageUrl != null) {
       return Center(
         child: CachedNetworkImage(
+          key: ValueKey(story.id),
           httpHeaders: imageHeaders,
           imageUrl: sizedImageUrl(
             story.imageUrl!,
@@ -157,16 +172,26 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
             pixelRatio: MediaQuery.devicePixelRatioOf(context),
           ),
           fit: BoxFit.contain,
+          imageBuilder: (_, image) {
+            WidgetsBinding.instance.addPostFrameCallback(
+              (_) => mounted ? _imageReady(story.id) : null,
+            );
+            return Image(image: image, fit: BoxFit.contain);
+          },
           placeholder:
               (_, __) => const Center(
                 child: CircularProgressIndicator(color: Colors.white),
               ),
-          errorWidget:
-              (_, __, ___) => const Icon(
-                Icons.broken_image,
-                color: Colors.white54,
-                size: 48,
-              ),
+          errorWidget: (_, __, ___) {
+            WidgetsBinding.instance.addPostFrameCallback(
+              (_) => mounted ? _imageReady(story.id) : null,
+            );
+            return const Icon(
+              Icons.broken_image,
+              color: Colors.white54,
+              size: 48,
+            );
+          },
         ),
       );
     }
@@ -201,7 +226,7 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
       body: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onLongPressStart: (_) => _progress.stop(),
-        onLongPressEnd: (_) => _progress.forward(),
+        onLongPressEnd: (_) => _resume(),
         onVerticalDragEnd: (details) {
           if ((details.primaryVelocity ?? 0) > 300) _close();
         },
