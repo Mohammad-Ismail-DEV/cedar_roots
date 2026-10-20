@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/session.dart';
+import '../../core/theme.dart';
+import '../../core/theme_mode.dart';
 import '../../core/ui.dart';
 import '../../data/auth_repository.dart';
 import '../../data/user_repository.dart';
@@ -18,6 +20,16 @@ class SettingsScreen extends ConsumerWidget {
       MaterialPageRoute(builder: (_) => const LoginScreen()),
       (_) => false,
     );
+  }
+
+  Future<void> _confirmSignOut(BuildContext context, WidgetRef ref) async {
+    final confirmed = await confirm(
+      context,
+      title: 'Sign Out',
+      message: 'Are you sure you want to sign out?',
+      confirmLabel: 'Sign Out',
+    );
+    if (confirmed && context.mounted) await _signOut(context, ref);
   }
 
   Future<void> _deleteAccount(BuildContext context, WidgetRef ref) async {
@@ -45,37 +57,47 @@ class SettingsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final palette = context.palette;
+    final mode = ref.watch(themeModeProvider);
+
+    Widget heading(String text) => Padding(
+      padding: const EdgeInsets.fromLTRB(16, 18, 16, 6),
+      child: Text(text, style: const TextStyle(fontWeight: FontWeight.w700)),
+    );
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Settings', style: TextStyle(color: Colors.green)),
-        iconTheme: const IconThemeData(color: Colors.green),
-        backgroundColor: Colors.white,
-        elevation: 1,
-      ),
+      appBar: AppBar(title: const Text('Settings')),
       body: ListView(
-        padding: const EdgeInsets.all(16),
         children: [
-          const Text('Account', style: TextStyle(fontWeight: FontWeight.bold)),
-          const SizedBox(height: 10),
-          Card(
-            elevation: 2,
-            child: Column(
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.logout),
-                  title: const Text('Sign Out'),
-                  onTap: () => _signOut(context, ref),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.cancel, color: Colors.red),
-                  title: const Text(
-                    'Delete Account',
-                    style: TextStyle(color: Colors.red),
-                  ),
-                  onTap: () => _deleteAccount(context, ref),
-                ),
-              ],
+          heading('Account'),
+          ListTile(
+            leading: const Icon(Icons.logout),
+            title: const Text('Sign Out'),
+            minTileHeight: 52,
+            onTap: () => _confirmSignOut(context, ref),
+          ),
+          ListTile(
+            leading: Icon(Icons.cancel_outlined, color: palette.danger),
+            title: Text(
+              'Delete Account',
+              style: TextStyle(color: palette.danger),
             ),
+            minTileHeight: 52,
+            onTap: () => _deleteAccount(context, ref),
+          ),
+          heading('Preferences'),
+          SwitchListTile(
+            secondary: const Icon(Icons.dark_mode_outlined),
+            title: const Text('Dark mode'),
+            subtitle: Text(
+              'Easier on the eyes at night',
+              style: TextStyle(color: palette.muted),
+            ),
+            value: mode == ThemeMode.dark,
+            onChanged:
+                (on) => ref
+                    .read(themeModeProvider.notifier)
+                    .set(on ? ThemeMode.dark : ThemeMode.light),
           ),
         ],
       ),

@@ -1,14 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 
 import '../../core/session.dart';
+import '../../core/theme.dart';
+import '../../core/time_label.dart';
 import '../../core/ui.dart';
 import '../../models/post.dart';
-import '../../shared/widgets/post_image.dart';
+import '../../shared/widgets/post_media.dart';
 import '../../shared/widgets/user_avatar.dart';
 import '../chat/image_preview_screen.dart';
 import '../feed/feed_provider.dart';
+import '../feed/likes_line.dart';
+import '../feed/saved_posts.dart';
+import '../feed/widgets/post_menu.dart';
+import '../profile/profile_provider.dart';
+import '../shell/app_routes.dart';
 import '../feed/post_details_provider.dart';
 import '../feed/widgets/comment_tile.dart';
 import 'create_post_screen.dart';
@@ -109,9 +115,6 @@ class _PostDetailsScreenState extends ConsumerState<PostDetailsScreen> {
     }
   }
 
-  String _formatDate(DateTime? date) =>
-      date == null ? '' : DateFormat('yMMMd • h:mm a').format(date);
-
   @override
   Widget build(BuildContext context) {
     final post = ref.watch(postDetailsProvider(widget.postId));
@@ -146,119 +149,249 @@ class _PostDetailsScreenState extends ConsumerState<PostDetailsScreen> {
   }
 
   Widget _content(Post post, int? me) {
+    final palette = context.palette;
     final author = post.author;
     final isLiked = me != null && post.isLikedBy(me);
+    final hasPhoto = post.imageUrl != null && post.imageUrl!.isNotEmpty;
+    final likes = likesLine(post, me ?? 0);
+    final saved = ref.watch(savedPostsProvider).contains(post.id);
+    final myUser =
+        me == null ? null : ref.watch(profileProvider(me)).valueOrNull?.user;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Post Details'),
+        title: const Text('Post'),
         actions: [
-          // Same Edit / Delete menu as on the feed card, for the post's owner.
+          // Same Edit / Delete as on the feed, for the post's owner.
           if (me != null && post.userId == me)
-            PopupMenuButton<String>(
-              onSelected: (value) {
-                if (value == 'edit') _editPost(post);
-                if (value == 'delete') _deletePost(post);
-              },
-              itemBuilder:
-                  (_) => const [
-                    PopupMenuItem(value: 'edit', child: Text('Edit')),
-                    PopupMenuItem(value: 'delete', child: Text('Delete')),
-                  ],
+            IconButton(
+              tooltip: 'Post options',
+              icon: const Icon(Icons.more_horiz),
+              onPressed:
+                  () => showPostMenu(
+                    context,
+                    isMine: true,
+                    onOpen: () {},
+                    onEdit: () => _editPost(post),
+                    onDelete: () => _deletePost(post),
+                  ),
             ),
         ],
       ),
-      body: GestureDetector(
-        onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
-        child: RefreshIndicator(
-          onRefresh: _notifier.reload,
-          child: ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              Row(
-                children: [
-                  UserAvatar(
-                    name: author?.name ?? 'User',
-                    blob: author?.profilePicBlob,
-                    imageUrl: author?.profilePic,
-                    backgroundColor: Colors.grey,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    author?.name ?? 'User',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              if (post.imageUrl != null && post.imageUrl!.isNotEmpty)
-                PostImage(
-                  url: post.imageUrl!,
-                  onTap:
-                      () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder:
-                              (_) => ImagePreviewScreen(
-                                imageUrls: [post.imageUrl!],
-                                initialIndex: 0,
+      body: Column(
+        children: [
+          Expanded(
+            child: GestureDetector(
+              onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+              child: RefreshIndicator(
+                onRefresh: _notifier.reload,
+                child: ListView(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+                      child: Row(
+                        children: [
+                          GestureDetector(
+                            onTap:
+                                () => Navigator.push(
+                                  context,
+                                  AppRoutes.profile(post.userId),
+                                ),
+                            child: UserAvatar(
+                              name: author?.name ?? 'User',
+                              blob: author?.profilePicBlob,
+                              imageUrl: author?.profilePic,
+                              radius: 16,
+                              backgroundColor: palette.avatarBg,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Text(
+                            author?.name ?? 'User',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    GestureDetector(
+                      onDoubleTap: () {
+                        if (!isLiked) _toggleLike();
+                      },
+                      child: PostMedia(
+                        post: post,
+                        onPhotoTap:
+                            hasPhoto
+                                ? () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder:
+                                        (_) => ImagePreviewScreen(
+                                          imageUrls: [post.imageUrl!],
+                                          initialIndex: 0,
+                                        ),
+                                  ),
+                                )
+                                : null,
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(4, 2, 4, 0),
+                      child: Row(
+                        children: [
+                          IconButton(
+                            tooltip: 'Like',
+                            onPressed: _toggleLike,
+                            icon: Icon(
+                              isLiked ? Icons.favorite : Icons.favorite_border,
+                              color:
+                                  isLiked
+                                      ? palette.heart
+                                      : Theme.of(context).colorScheme.onSurface,
+                              size: 26,
+                            ),
+                          ),
+                          const Spacer(),
+                          IconButton(
+                            tooltip: saved ? 'Remove from saved' : 'Save',
+                            onPressed:
+                                () => ref
+                                    .read(savedPostsProvider.notifier)
+                                    .toggle(post.id),
+                            icon: Icon(
+                              saved ? Icons.bookmark : Icons.bookmark_border,
+                              size: 26,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (likes.isNotEmpty)
+                            Text(
+                              likes,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 14,
                               ),
+                            ),
+                          if (hasPhoto && post.content.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 3),
+                              child: Text.rich(
+                                TextSpan(
+                                  children: [
+                                    TextSpan(
+                                      text: author?.name ?? 'User',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    TextSpan(text: ' ${post.content}'),
+                                  ],
+                                ),
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  height: 1.35,
+                                ),
+                              ),
+                            ),
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Text(
+                              timeAgoLabel(post.createdAt),
+                              style: TextStyle(
+                                color: palette.muted,
+                                fontSize: 10,
+                                letterSpacing: 0.4,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    const Divider(),
+                    const Padding(
+                      padding: EdgeInsets.fromLTRB(14, 12, 14, 4),
+                      child: Text(
+                        'Comments',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
                         ),
                       ),
+                    ),
+                    if (post.comments.isEmpty)
+                      Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Text(
+                          'No comments yet. Start the conversation.',
+                          style: TextStyle(color: palette.muted),
+                        ),
+                      ),
+                    for (final comment in post.comments)
+                      CommentTile(
+                        comment: comment,
+                        // The post's owner can remove anyone's comment; others only their own.
+                        onDelete:
+                            canDeleteComment(
+                                  post: post,
+                                  comment: comment,
+                                  me: me,
+                                )
+                                ? () => _deleteComment(comment.id)
+                                : null,
+                      ),
+                    const SizedBox(height: 16),
+                  ],
                 ),
-              const SizedBox(height: 12),
-              Text(post.content),
-              const SizedBox(height: 8),
-              Text(
-                _formatDate(post.createdAt),
-                style: const TextStyle(color: Colors.grey),
               ),
-              const SizedBox(height: 16),
-              Row(
+            ),
+          ),
+          const Divider(),
+          SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 6, 4, 8),
+              child: Row(
                 children: [
-                  IconButton(
-                    onPressed: _toggleLike,
-                    icon: Icon(
-                      isLiked ? Icons.favorite : Icons.favorite_border,
-                      color: isLiked ? Colors.red : Colors.grey,
+                  UserAvatar(
+                    name: myUser?.name ?? '?',
+                    imageUrl: myUser?.profilePic,
+                    blob: myUser?.profilePicBlob,
+                    radius: 16,
+                    backgroundColor: palette.avatarBg,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: TextField(
+                      controller: _comment,
+                      textInputAction: TextInputAction.send,
+                      decoration: InputDecoration(
+                        hintText: 'Add a comment...',
+                        filled: false,
+                        border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        contentPadding: EdgeInsets.zero,
+                        hintStyle: TextStyle(color: palette.muted),
+                      ),
+                      onSubmitted: (_) => _addComment(),
                     ),
                   ),
-                  Text('${post.likes.length} likes'),
+                  TextButton(onPressed: _addComment, child: const Text('Post')),
                 ],
               ),
-              const Divider(height: 32),
-              const Text(
-                'Comments',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: _comment,
-                decoration: InputDecoration(
-                  hintText: 'Write a comment...',
-                  suffixIcon: IconButton(
-                    icon: const Icon(Icons.send),
-                    onPressed: _addComment,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                onSubmitted: (_) => _addComment(),
-              ),
-              const SizedBox(height: 12),
-              for (final comment in post.comments)
-                CommentTile(
-                  comment: comment,
-                  // The post's owner can remove anyone's comment; others only their own.
-                  onDelete:
-                      canDeleteComment(post: post, comment: comment, me: me)
-                          ? () => _deleteComment(comment.id)
-                          : null,
-                ),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }

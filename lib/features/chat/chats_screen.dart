@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/session.dart';
+import '../../core/theme.dart';
 import '../../core/ui.dart';
 import '../connections/connections_screen.dart';
 import 'chat_screen.dart';
@@ -18,7 +19,20 @@ class ChatsScreen extends ConsumerWidget {
     final notifier = ref.read(conversationsProvider.notifier);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Chats')),
+      appBar: AppBar(
+        title: const Text('Messages'),
+        actions: [
+          IconButton(
+            tooltip: 'New message',
+            icon: const Icon(Icons.edit_square),
+            onPressed:
+                () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ConnectionsScreen()),
+                ),
+          ),
+        ],
+      ),
       body: Stack(
         children: [
           conversations.when(
@@ -39,14 +53,10 @@ class ChatsScreen extends ConsumerWidget {
             data:
                 (list) =>
                     list.isEmpty
-                        ? const Center(
+                        ? Center(
                           child: Text(
-                            'No open chats',
-                            style: TextStyle(
-                              fontSize: 28,
-                              fontWeight: FontWeight.w500,
-                              color: Colors.grey,
-                            ),
+                            'No messages yet',
+                            style: TextStyle(color: context.palette.muted),
                           ),
                         )
                         : RefreshIndicator(
@@ -73,27 +83,6 @@ class ChatsScreen extends ConsumerWidget {
                             },
                           ),
                         ),
-          ),
-          Positioned(
-            bottom: 20,
-            right: 20,
-            child: SizedBox(
-              width: 70,
-              height: 70,
-              child: FloatingActionButton(
-                backgroundColor: const Color(
-                  0xFF228B22,
-                ).withValues(alpha: 0.85),
-                onPressed:
-                    () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const ConnectionsScreen(),
-                      ),
-                    ),
-                child: const Icon(Icons.chat, size: 30, color: Colors.white),
-              ),
-            ),
           ),
         ],
       ),

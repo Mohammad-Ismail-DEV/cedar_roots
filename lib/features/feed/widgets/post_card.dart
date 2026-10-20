@@ -5,6 +5,7 @@ import '../../../core/time_label.dart';
 import '../../../models/post.dart';
 import '../../../shared/widgets/post_media.dart';
 import '../../../shared/widgets/ring_avatar.dart';
+import '../likes_line.dart';
 
 /// One post in the feed: header, edge-to-edge media, actions, likes, caption and comments link.
 /// Double-tap the media to like it.
@@ -64,25 +65,6 @@ class _PostCardState extends State<PostCard>
     if (!_liked) widget.onLike();
   }
 
-  String _likesLine() {
-    final likes = widget.post.likes;
-    final others = likes.length - (_liked ? 1 : 0);
-    if (_liked) {
-      return others > 0
-          ? 'Liked by you and $others ${others == 1 ? 'other' : 'others'}'
-          : 'Liked by you';
-    }
-    if (likes.isEmpty) return '';
-    final first = likes.first.liker?.name;
-    if (first == null || first.isEmpty) {
-      return '${likes.length} ${likes.length == 1 ? 'like' : 'likes'}';
-    }
-    final rest = likes.length - 1;
-    return rest == 0
-        ? 'Liked by $first'
-        : 'Liked by $first and $rest ${rest == 1 ? 'other' : 'others'}';
-  }
-
   /// Scale and fade of the big heart: pops in, holds, fades out.
   (double scale, double opacity) _burstLook(double t) {
     if (t == 0) return (0.2, 0);
@@ -100,7 +82,7 @@ class _PostCardState extends State<PostCard>
     final name = author?.name ?? 'Unknown';
     final hasPhoto = post.imageUrl != null && post.imageUrl!.isNotEmpty;
     final comments = post.comments.length;
-    final likesLine = _likesLine();
+    final likesText = likesLine(widget.post, widget.currentUserId);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
@@ -211,9 +193,9 @@ class _PostCardState extends State<PostCard>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (likesLine.isNotEmpty)
+                if (likesText.isNotEmpty)
                   Text(
-                    likesLine,
+                    likesText,
                     style: const TextStyle(
                       fontWeight: FontWeight.w700,
                       fontSize: 14,

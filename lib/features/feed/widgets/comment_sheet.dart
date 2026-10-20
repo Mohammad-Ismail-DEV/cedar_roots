@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/session.dart';
+import '../../../core/theme.dart';
 import '../../../core/ui.dart';
+import '../../profile/profile_provider.dart';
+import '../../../shared/widgets/user_avatar.dart';
 import '../post_details_provider.dart';
 import 'comment_tile.dart';
 
@@ -63,92 +66,106 @@ class _CommentSheetState extends ConsumerState<CommentSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = context.palette;
     final post = ref.watch(postDetailsProvider(widget.postId));
     final me = ref.watch(currentUserIdProvider);
+    final myUser =
+        me == null ? null : ref.watch(profileProvider(me)).valueOrNull?.user;
 
     return DraggableScrollableSheet(
       expand: false,
       initialChildSize: 0.7,
       builder:
-          (_, __) => SafeArea(
-            child: Padding(
-              padding: EdgeInsets.only(
-                bottom: MediaQuery.of(context).viewInsets.bottom,
-              ),
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+          (_, __) => Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom,
+            ),
+            child: Column(
+              children: [
+                const Padding(
+                  padding: EdgeInsets.only(bottom: 10),
+                  child: Text(
+                    'Comments',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                  ),
                 ),
-                child: Column(
-                  children: [
-                    const Text(
-                      'Comments',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Expanded(
-                      child: post.when(
-                        loading:
-                            () => const Center(
-                              child: CircularProgressIndicator(),
-                            ),
-                        error: (e, _) => Center(child: Text(errorMessage(e))),
-                        data: (data) {
-                          if (data.comments.isEmpty) {
-                            return const Center(child: Text('No comments yet'));
-                          }
-                          return ListView.builder(
-                            itemCount: data.comments.length,
-                            itemBuilder: (_, i) {
-                              final comment = data.comments[i];
-                              return CommentTile(
-                                comment: comment,
-                                onDelete:
-                                    canDeleteComment(
-                                          post: data,
-                                          comment: comment,
-                                          me: me,
-                                        )
-                                        ? () => _delete(comment.id)
-                                        : null,
-                              );
-                            },
+                const Divider(),
+                Expanded(
+                  child: post.when(
+                    loading:
+                        () => const Center(child: CircularProgressIndicator()),
+                    error: (e, _) => Center(child: Text(errorMessage(e))),
+                    data: (data) {
+                      if (data.comments.isEmpty) {
+                        return Center(
+                          child: Text(
+                            'No comments yet.\nStart the conversation.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: palette.muted),
+                          ),
+                        );
+                      }
+                      return ListView.builder(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        itemCount: data.comments.length,
+                        itemBuilder: (_, i) {
+                          final comment = data.comments[i];
+                          return CommentTile(
+                            comment: comment,
+                            onDelete:
+                                canDeleteComment(
+                                      post: data,
+                                      comment: comment,
+                                      me: me,
+                                    )
+                                    ? () => _delete(comment.id)
+                                    : null,
                           );
                         },
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
+                      );
+                    },
+                  ),
+                ),
+                const Divider(),
+                SafeArea(
+                  top: false,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 6, 4, 8),
+                    child: Row(
                       children: [
+                        UserAvatar(
+                          name: myUser?.name ?? '?',
+                          imageUrl: myUser?.profilePic,
+                          blob: myUser?.profilePicBlob,
+                          radius: 16,
+                          backgroundColor: palette.avatarBg,
+                        ),
+                        const SizedBox(width: 10),
                         Expanded(
                           child: TextField(
                             controller: _text,
-                            decoration: const InputDecoration(
+                            textInputAction: TextInputAction.send,
+                            decoration: InputDecoration(
                               hintText: 'Add a comment...',
-                              border: OutlineInputBorder(),
-                              contentPadding: EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 10,
-                              ),
+                              filled: false,
+                              border: InputBorder.none,
+                              enabledBorder: InputBorder.none,
+                              focusedBorder: InputBorder.none,
+                              contentPadding: EdgeInsets.zero,
+                              hintStyle: TextStyle(color: palette.muted),
                             ),
                             onSubmitted: (_) => _submit(),
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        IconButton(
-                          icon: const Icon(Icons.send, color: Colors.green),
+                        TextButton(
                           onPressed: _sending ? null : _submit,
+                          child: const Text('Post'),
                         ),
                       ],
                     ),
-                  ],
+                  ),
                 ),
-              ),
+              ],
             ),
           ),
     );

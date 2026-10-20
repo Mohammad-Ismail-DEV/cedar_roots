@@ -7,6 +7,8 @@ import '../../data/auth_repository.dart';
 import '../shell/nav_bar.dart';
 import 'login_screen.dart';
 import 'verification_screen.dart';
+import '../../core/theme.dart';
+import '../../shared/widgets/wordmark.dart';
 
 final _emailPattern = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
 final _passwordPattern = RegExp(
@@ -72,10 +74,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = context.palette;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Register'),
         leading: IconButton(
+          tooltip: 'Back',
           icon: const Icon(Icons.arrow_back),
           onPressed:
               () => Navigator.pushAndRemoveUntil(
@@ -85,55 +89,93 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               ),
         ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
+      body: SafeArea(
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            TextField(
-              controller: _email,
-              decoration: const InputDecoration(labelText: 'Email'),
-              keyboardType: TextInputType.emailAddress,
-            ),
-            TextField(
-              controller: _name,
-              decoration: const InputDecoration(labelText: 'Full Name'),
-            ),
-            TextField(
-              controller: _password,
-              obscureText: !_passwordVisible,
-              decoration: InputDecoration(
-                labelText: 'Password',
-                suffixIcon: IconButton(
-                  icon: Icon(
-                    _passwordVisible ? Icons.visibility : Icons.visibility_off,
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(36, 24, 36, 24),
+                children: [
+                  const Center(child: Wordmark(size: 54)),
+                  const SizedBox(height: 14),
+                  Center(
+                    child: Text(
+                      'Sign up to join your community.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: palette.muted,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
-                  onPressed:
-                      () =>
-                          setState(() => _passwordVisible = !_passwordVisible),
-                ),
+                  const SizedBox(height: 24),
+                  TextField(
+                    controller: _name,
+                    decoration: const InputDecoration(hintText: 'Full Name'),
+                    textInputAction: TextInputAction.next,
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: _email,
+                    decoration: const InputDecoration(hintText: 'Email'),
+                    keyboardType: TextInputType.emailAddress,
+                    textInputAction: TextInputAction.next,
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: _password,
+                    obscureText: !_passwordVisible,
+                    decoration: InputDecoration(
+                      hintText: 'Password',
+                      suffixIcon: IconButton(
+                        tooltip:
+                            _passwordVisible
+                                ? 'Hide password'
+                                : 'Show password',
+                        icon: Icon(
+                          _passwordVisible
+                              ? Icons.visibility
+                              : Icons.visibility_off,
+                        ),
+                        onPressed:
+                            () => setState(
+                              () => _passwordVisible = !_passwordVisible,
+                            ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: _busy ? null : _register,
+                    style: ElevatedButton.styleFrom(
+                      minimumSize: const Size.fromHeight(46),
+                    ),
+                    child:
+                        _busy
+                            ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                            : const Text('Sign Up'),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _busy ? null : _register,
-              child:
-                  _busy
-                      ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                      : const Text('Sign Up'),
-            ),
-            const SizedBox(height: 20),
-            TextButton(
-              onPressed:
-                  () => Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (_) => const LoginScreen()),
-                  ),
-              child: const Text('Already have an account? Login here'),
+            const Divider(),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: TextButton(
+                onPressed:
+                    () => Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(builder: (_) => const LoginScreen()),
+                    ),
+                child: const Text('Already have an account? Login here'),
+              ),
             ),
           ],
         ),

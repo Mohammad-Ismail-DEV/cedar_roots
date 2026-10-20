@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/image_url.dart';
+import '../../../core/theme.dart';
 import '../../../models/message.dart';
 import '../../../shared/widgets/message_status_icon.dart';
 
@@ -29,11 +30,22 @@ class ChatMessageBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = context.palette;
+    final scheme = Theme.of(context).colorScheme;
     final time = DateFormat.jm().format(message.sentAt);
+    // Text on my (accent) bubbles is white; on the other person's it follows the theme.
+    final ink = isMe ? Colors.white : scheme.onSurface;
+    final softInk = isMe ? Colors.white70 : palette.muted;
     final footer = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(time, style: const TextStyle(color: Colors.white70, fontSize: 10)),
+        Text(
+          time,
+          style: TextStyle(
+            color: message.isImage ? Colors.white70 : softInk,
+            fontSize: 10,
+          ),
+        ),
         if (isMe) ...[
           const SizedBox(width: 4),
           MessageStatusIcon(status: message.status),
@@ -48,7 +60,7 @@ class ChatMessageBubble extends StatelessWidget {
         child: Stack(
           children: [
             ClipRRect(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(16),
               child:
                   message.isLocal
                       ? _localImage()
@@ -102,7 +114,10 @@ class ChatMessageBubble extends StatelessWidget {
       bubble = Column(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          Text(message.content, style: const TextStyle(color: Colors.white)),
+          Text(
+            message.content,
+            style: TextStyle(color: ink, fontSize: 15, height: 1.3),
+          ),
           const SizedBox(height: 4),
           footer,
         ],
@@ -115,13 +130,16 @@ class ChatMessageBubble extends StatelessWidget {
         onTap: message.status == MessageStatus.failed ? onRetry : null,
         child: Container(
           margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 10),
-          padding: message.isImage ? EdgeInsets.zero : const EdgeInsets.all(10),
+          padding:
+              message.isImage
+                  ? EdgeInsets.zero
+                  : const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
           decoration: BoxDecoration(
             color:
-                isMe
-                    ? const Color(0xFF228B22).withValues(alpha: 0.85)
-                    : Colors.grey[600],
-            borderRadius: BorderRadius.circular(12),
+                message.isImage
+                    ? Colors.transparent
+                    : (isMe ? scheme.primary : palette.inputBg),
+            borderRadius: BorderRadius.circular(message.isImage ? 16 : 20),
           ),
           constraints: BoxConstraints(
             maxWidth: MediaQuery.of(context).size.width * 0.8,
