@@ -45,6 +45,17 @@
                 <category android:name="android.intent.category.BROWSABLE"/>
                 <data android:scheme="cedarroots"/>
             </intent-filter>
+            <!-- Links shared outside the app (https://<server>/p/123) open the post directly. Android
+                 verifies the server through /.well-known/assetlinks.json; change the host when the
+                 API moves to its own domain. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="https"
+                      android:host="heavily-primary-mallard.ngrok-free.app"
+                      android:pathPrefix="/p/"/>
+            </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
