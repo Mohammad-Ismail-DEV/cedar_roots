@@ -52,6 +52,20 @@ class SessionController extends Notifier<Session?> {
     state = Session(userId: user.id, token: token, name: user.name);
   }
 
+  /// Keeps the saved name and email in step after the user edits their profile.
+  Future<void> updateProfile({String? name, String? email}) async {
+    final current = state;
+    if (current == null) return;
+    if (name != null) {
+      await _prefs.setString(_nameKey, name);
+      await _prefs.setString('username', name);
+    }
+    if (email != null) await _prefs.setString('email', email);
+    if (name != null) {
+      state = Session(userId: current.userId, token: current.token, name: name);
+    }
+  }
+
   Future<void> signOut() async {
     if (state == null) return;
     state = null;

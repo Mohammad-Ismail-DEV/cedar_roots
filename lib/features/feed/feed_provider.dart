@@ -137,6 +137,37 @@ class FeedNotifier extends AsyncNotifier<List<FeedItem>> {
     }
   }
 
+  /// Joins or leaves an event right away and rolls back if the server refuses.
+  Future<void> setGoing(int eventId, {required bool going}) async {
+    final before = state.valueOrNull;
+    if (before == null) return;
+
+    state = AsyncData([
+      for (final item in before)
+        if (item is EventFeedItem && item.event.id == eventId)
+          EventFeedItem(
+            item.event.copyWith(
+              isParticipant: going,
+              participantCount: (item.event.participantCount + (going ? 1 : -1))
+                  .clamp(0, 1 << 30),
+            ),
+          )
+        else
+          item,
+    ]);
+
+    try {
+      if (going) {
+        await _events.join(eventId);
+      } else {
+        await _events.leave(eventId);
+      }
+    } catch (_) {
+      state = AsyncData(before);
+      rethrow;
+    }
+  }
+
   Future<void> deletePost(int postId) async {
     await _posts.delete(postId);
     final items = state.valueOrNull;
@@ -159,6 +190,6 @@ String feedSignature(List<FeedItem> items) => items
       }
       final e = (item as EventFeedItem).event;
       return 'e${e.id}|${e.title}|${e.description}|${e.location}|${e.dateTime}|'
-          '${e.organization?.name}';
+          '${e.organization?.name}|${e.participantCount}|${e.isParticipant}';
     })
     .join('\n');

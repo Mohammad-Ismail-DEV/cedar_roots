@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/providers.dart';
+import '../../core/session.dart';
 import '../../data/notification_repository.dart';
 import '../../models/app_notification.dart';
 
@@ -19,6 +20,9 @@ class NotificationsNotifier
 
   @override
   Future<List<AppNotification>> build() async {
+    // Signing in or out starts a fresh list instead of keeping a guest-time error.
+    if (ref.watch(currentUserIdProvider) == null) return const [];
+
     final live = ref
         .read(socketClientProvider)
         .on('receive_notification')

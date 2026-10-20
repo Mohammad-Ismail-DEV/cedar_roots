@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import '../core/api_client.dart';
 import '../core/providers.dart';
 import '../models/json_helpers.dart';
+import '../models/presence.dart';
 import '../models/user.dart';
 
 final userRepositoryProvider = Provider<UserRepository>(
@@ -37,6 +38,11 @@ class UserRepository {
       if (bio != null) 'bio': bio,
       if (location != null) 'location': location,
     },
+  );
+
+  /// Online / last seen of a connection (403 for anyone else).
+  Future<Presence> presence(int id) async => Presence.fromJson(
+    asMap(await _api.get('/users/$id/presence')) ?? const {},
   );
 
   Future<void> deleteAccount(int id) => _api.delete('/users/$id');

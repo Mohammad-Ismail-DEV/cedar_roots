@@ -6,6 +6,9 @@ import '../../core/session.dart';
 import '../../core/ui.dart';
 import '../../shared/widgets/user_avatar.dart';
 import 'event_details_provider.dart';
+import '../../core/theme.dart';
+import '../../shared/widgets/shadow_button.dart';
+import 'event_style.dart';
 
 class EventDetailsScreen extends ConsumerStatefulWidget {
   const EventDetailsScreen({super.key, required this.eventId});
@@ -86,30 +89,32 @@ class _EventDetailsScreenState extends ConsumerState<EventDetailsScreen> {
 
   Widget _joinControl(EventDetails data, bool signedIn) {
     if (!signedIn) {
-      return const Text(
+      return Text(
         'Login to interact with this event.',
-        style: TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w500,
-          color: Colors.red,
+        style: TextStyle(color: context.palette.muted),
+      );
+    }
+    if (data.isOrgMember) {
+      return Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: context.palette.inputBg,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Text(
+          'You organise this event.',
+          style: TextStyle(color: context.palette.muted, fontSize: 13),
         ),
       );
     }
-    if (data.isOrgMember) return const SizedBox.shrink();
 
     return data.isParticipant
-        ? ElevatedButton(
-          onPressed: () => _run(_notifier.leave),
-          style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-          child: const Text(
-            'Leave Event',
-            style: TextStyle(color: Colors.white, fontSize: 16),
-          ),
+        ? ShadowButton(
+          label: 'Leave Event',
+          color: Colors.red,
+          onTap: () => _run(_notifier.leave),
         )
-        : ElevatedButton(
-          onPressed: () => _run(_notifier.join),
-          child: const Text('Join Event'),
-        );
+        : ShadowButton(label: 'Join Event', onTap: () => _run(_notifier.join));
   }
 
   Widget _content(EventDetails data, bool signedIn) {
@@ -121,84 +126,139 @@ class _EventDetailsScreenState extends ConsumerState<EventDetailsScreen> {
       body: RefreshIndicator(
         onRefresh: _notifier.reload,
         child: ListView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.only(bottom: 24),
           children: [
-            Row(
-              children: [
-                UserAvatar(
-                  name: org?.name ?? '?',
-                  blob: org?.logoBlob,
-                  imageUrl: org?.logo,
-                  radius: 24,
-                  backgroundColor: Colors.grey[400]!,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  org?.name ?? 'Unknown',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-              ],
+            Container(
+              height: 170,
+              decoration: BoxDecoration(gradient: eventGradient(event.id)),
+              alignment: Alignment.topLeft,
+              padding: const EdgeInsets.all(14),
+              child:
+                  event.dateTime == null
+                      ? null
+                      : Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              DateFormat('d').format(event.dateTime!),
+                              style: const TextStyle(
+                                color: Color(0xFF262626),
+                                fontSize: 20,
+                                fontWeight: FontWeight.w800,
+                                height: 1.1,
+                              ),
+                            ),
+                            Text(
+                              DateFormat(
+                                'MMM',
+                              ).format(event.dateTime!).toUpperCase(),
+                              style: const TextStyle(
+                                color: Color(0xFFC13584),
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.6,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
             ),
-            const SizedBox(height: 16),
-            Text(
-              event.title,
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Text(event.description ?? ''),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                const Icon(Icons.access_time, color: Colors.orange),
-                const SizedBox(width: 6),
-                Text(
-                  _formatDateTime(event.dateTime),
-                  style: const TextStyle(fontSize: 14, color: Colors.black87),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            if (event.location != null && event.location!.isNotEmpty)
-              Row(
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.location_on),
-                  const SizedBox(width: 4),
-                  Expanded(child: Text(event.location!)),
+                  Row(
+                    children: [
+                      UserAvatar(
+                        name: org?.name ?? '?',
+                        blob: org?.logoBlob,
+                        imageUrl: org?.logo,
+                        radius: 24,
+                        backgroundColor: context.palette.avatarBg,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        org?.name ?? 'Unknown',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    event.title,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(event.description ?? ''),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      const Icon(Icons.access_time_outlined),
+                      const SizedBox(width: 6),
+                      Text(
+                        _formatDateTime(event.dateTime),
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  if (event.location != null && event.location!.isNotEmpty)
+                    Row(
+                      children: [
+                        const Icon(Icons.location_on),
+                        const SizedBox(width: 4),
+                        Expanded(child: Text(event.location!)),
+                      ],
+                    ),
+                  const SizedBox(height: 16),
+                  _joinControl(data, signedIn),
+                  const SizedBox(height: 24),
+                  const Text(
+                    'Announcements',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  if (data.canAnnounce) ...[
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: _announcement,
+                      decoration: InputDecoration(
+                        filled: true,
+                        hintText: 'Write an announcement...',
+                        suffixIcon: IconButton(
+                          icon: const Icon(Icons.send),
+                          onPressed: _postAnnouncement,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      onSubmitted: (_) => _postAnnouncement(),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                  for (final a in data.announcements)
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(a.message),
+                      subtitle: Text(_formatDateTime(a.createdAt)),
+                      leading: const Icon(Icons.campaign_outlined),
+                    ),
                 ],
               ),
-            const SizedBox(height: 16),
-            _joinControl(data, signedIn),
-            const SizedBox(height: 24),
-            const Text(
-              'Announcements',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
-            if (data.canAnnounce) ...[
-              const SizedBox(height: 8),
-              TextField(
-                controller: _announcement,
-                decoration: InputDecoration(
-                  filled: true,
-                  fillColor: Colors.white,
-                  hintText: 'Write an announcement...',
-                  suffixIcon: IconButton(
-                    icon: const Icon(Icons.send),
-                    onPressed: _postAnnouncement,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                onSubmitted: (_) => _postAnnouncement(),
-              ),
-              const SizedBox(height: 12),
-            ],
-            for (final a in data.announcements)
-              ListTile(
-                title: Text(a.message),
-                subtitle: Text(_formatDateTime(a.createdAt)),
-                leading: const Icon(Icons.campaign_outlined),
-              ),
           ],
         ),
       ),

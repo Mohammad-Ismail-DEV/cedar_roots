@@ -1,14 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../connections/connections_screen.dart';
-import '../notifications/notifications_screen.dart';
+import '../../core/session.dart';
+import '../../core/theme.dart';
+import '../../core/ui.dart';
+import '../../shared/widgets/user_avatar.dart';
+import '../events/events_screen.dart';
 import '../feed/home_screen.dart';
+import '../profile/profile_provider.dart';
 import '../profile/profile_screen.dart';
+import '../search/search_screen.dart';
+import 'app_routes.dart';
 
+/// The app shell: Home, Search, Create (opens the post composer), Events and Profile.
 class NavBar extends ConsumerStatefulWidget {
   const NavBar({super.key, this.initialIndex = 0});
 
+  /// Which tab to start on: 0 Home, 1 Search, 2 Events, 3 Profile.
   final int initialIndex;
 
   @override
@@ -16,44 +24,121 @@ class NavBar extends ConsumerStatefulWidget {
 }
 
 class _NavBarState extends ConsumerState<NavBar> {
-  late int _selectedIndex = widget.initialIndex;
+  late int _tab = widget.initialIndex;
+
+  static const _screens = <Widget>[
+    HomeScreen(),
+    SearchScreen(),
+    EventsScreen(),
+    ProfileScreen(),
+  ];
+
+  Future<void> _create() async {
+    if (ref.read(currentUserIdProvider) == null) {
+      showSnack(context, 'Login to create a post');
+      return;
+    }
+    await Navigator.push(context, AppRoutes.createPost());
+  }
+
+  Widget _item({
+    required String label,
+    required Widget icon,
+    required VoidCallback onTap,
+    required bool selected,
+  }) {
+    return Expanded(
+      child: Semantics(
+        button: true,
+        selected: selected,
+        label: label,
+        child: InkResponse(
+          onTap: onTap,
+          radius: 32,
+          child: SizedBox(height: 52, child: Center(child: icon)),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final screens = <Widget>[
-      const HomeScreen(),
-      const ConnectionsScreen(),
-      const NotificationsScreen(),
-      const ProfileScreen(),
-    ];
+    final palette = context.palette;
+    final color = Theme.of(context).colorScheme.onSurface;
+    final me = ref.watch(currentUserIdProvider);
+    final user =
+        me == null ? null : ref.watch(profileProvider(me)).valueOrNull?.user;
+
+    Widget glyph(IconData outline, IconData filled, bool selected) =>
+        Icon(selected ? filled : outline, size: 27, color: color);
 
     return Scaffold(
-      body: screens[_selectedIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: (index) => setState(() => _selectedIndex = index),
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Home',
-            backgroundColor: Colors.blue,
+      body: IndexedStack(index: _tab, children: _screens),
+      bottomNavigationBar: DecoratedBox(
+        decoration: BoxDecoration(
+          color: Theme.of(context).scaffoldBackgroundColor,
+          border: Border(top: BorderSide(color: palette.border)),
+        ),
+        child: SafeArea(
+          top: false,
+          child: Row(
+            children: [
+              _item(
+                label: 'Home',
+                selected: _tab == 0,
+                icon: glyph(Icons.home_outlined, Icons.home_filled, _tab == 0),
+                onTap: () => setState(() => _tab = 0),
+              ),
+              _item(
+                label: 'Search',
+                selected: _tab == 1,
+                icon: Icon(
+                  Icons.search,
+                  size: _tab == 1 ? 30 : 27,
+                  color: color,
+                  weight: _tab == 1 ? 800 : 400,
+                ),
+                onTap: () => setState(() => _tab = 1),
+              ),
+              _item(
+                label: 'Create a post',
+                selected: false,
+                icon: Icon(Icons.add_box_outlined, size: 27, color: color),
+                onTap: _create,
+              ),
+              _item(
+                label: 'Events',
+                selected: _tab == 2,
+                icon: glyph(
+                  Icons.calendar_month_outlined,
+                  Icons.calendar_month,
+                  _tab == 2,
+                ),
+                onTap: () => setState(() => _tab = 2),
+              ),
+              _item(
+                label: 'Profile',
+                selected: _tab == 3,
+                icon: Container(
+                  padding: const EdgeInsets.all(1.5),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border:
+                        _tab == 3 ? Border.all(color: color, width: 1.5) : null,
+                  ),
+                  child: UserAvatar(
+                    name: user?.name ?? '?',
+                    imageUrl: user?.profilePic,
+                    blob: user?.profilePicBlob,
+                    radius: 12,
+                    backgroundColor: palette.avatarBg,
+                  ),
+                ),
+                onTap: () => setState(() => _tab = 3),
+              ),
+            ],
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.group),
-            label: 'Connections',
-            backgroundColor: Colors.blue,
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.notifications),
-            label: 'Notifications',
-            backgroundColor: Colors.blue,
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.account_circle),
-            label: 'Profile',
-            backgroundColor: Colors.blue,
-          ),
-        ],
+        ),
       ),
     );
   }

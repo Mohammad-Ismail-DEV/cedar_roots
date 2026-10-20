@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/navigation.dart';
 import '../../core/session.dart';
+import '../../core/theme.dart';
 import '../../core/ui.dart';
 import '../../models/connection.dart';
 import '../../models/user.dart';
@@ -16,9 +17,12 @@ import 'connections_provider.dart';
 /// Connections of [userId] (default: the signed-in user). Requests are private,
 /// so that tab only appears on your own list.
 class ConnectionsScreen extends ConsumerWidget {
-  const ConnectionsScreen({super.key, this.userId});
+  const ConnectionsScreen({super.key, this.userId, this.initialTab = 0});
 
   final int? userId;
+
+  /// 0 for Connections, 1 for Requests (own connections only).
+  final int initialTab;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -30,15 +34,24 @@ class ConnectionsScreen extends ConsumerWidget {
       );
     }
     final target = userId ?? me;
-    return _Connections(userId: target, isMine: target == me);
+    return _Connections(
+      userId: target,
+      isMine: target == me,
+      initialTab: initialTab,
+    );
   }
 }
 
 class _Connections extends ConsumerStatefulWidget {
-  const _Connections({required this.userId, required this.isMine});
+  const _Connections({
+    required this.userId,
+    required this.isMine,
+    required this.initialTab,
+  });
 
   final int userId;
   final bool isMine;
+  final int initialTab;
 
   @override
   ConsumerState<_Connections> createState() => _ConnectionsState();
@@ -48,6 +61,7 @@ class _ConnectionsState extends ConsumerState<_Connections>
     with SingleTickerProviderStateMixin, RouteAware {
   late final TabController _tabs = TabController(
     length: widget.isMine ? 2 : 1,
+    initialIndex: widget.isMine ? widget.initialTab.clamp(0, 1) : 0,
     vsync: this,
   );
   ModalRoute<dynamic>? _route;
@@ -92,6 +106,12 @@ class _ConnectionsState extends ConsumerState<_Connections>
             widget.isMine
                 ? TabBar(
                   controller: _tabs,
+                  indicatorColor: Theme.of(context).colorScheme.onSurface,
+                  indicatorSize: TabBarIndicatorSize.tab,
+                  labelColor: Theme.of(context).colorScheme.onSurface,
+                  unselectedLabelColor: context.palette.muted,
+                  labelStyle: const TextStyle(fontWeight: FontWeight.w700),
+                  dividerColor: context.palette.border,
                   tabs: const [Tab(text: 'Connections'), Tab(text: 'Requests')],
                 )
                 : null,
@@ -162,9 +182,6 @@ mixin _SuggestionSearch<T extends ConsumerStatefulWidget> on ConsumerState<T> {
       onChanged: onSearchChanged,
       decoration: InputDecoration(
         hintText: hint,
-        filled: true,
-        fillColor: Colors.white,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
         prefixIcon: const Icon(Icons.search),
       ),
     ),
@@ -338,12 +355,14 @@ class _RequestsTabState extends ConsumerState<_RequestsTab>
                       children: [
                         _IconShadowButton(
                           icon: Icons.check,
+                          tooltip: 'Accept',
                           color: Colors.green,
                           onTap: () => _respond(c, true),
                         ),
                         const SizedBox(width: 8),
                         _IconShadowButton(
                           icon: Icons.close,
+                          tooltip: 'Reject',
                           color: Colors.red,
                           onTap: () => _respond(c, false),
                         ),
@@ -398,7 +417,7 @@ class _UserTile extends StatelessWidget {
         name: user.name,
         blob: user.profilePicBlob,
         imageUrl: user.profilePic,
-        backgroundColor: color,
+        backgroundColor: context.palette.avatarBg,
       ),
       title: Text(user.name, overflow: TextOverflow.ellipsis),
       subtitle: subtitle == null ? null : Text(subtitle!),
@@ -413,32 +432,41 @@ class _IconShadowButton extends StatelessWidget {
     required this.icon,
     required this.color,
     required this.onTap,
+    this.tooltip,
   });
 
   final IconData icon;
+
+  /// Green means "accept" (filled with the accent colour); anything else is a quiet button.
   final Color color;
   final VoidCallback onTap;
+  final String? tooltip;
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(8),
-          boxShadow: const [
-            BoxShadow(
-              color: Colors.black12,
-              blurRadius: 6,
-              offset: Offset(0, 3),
+    final primary = color == Colors.green;
+    final scheme = Theme.of(context).colorScheme;
+
+    return Tooltip(
+      message: tooltip ?? '',
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: primary ? scheme.primary : context.palette.inputBg,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Center(
+            child: Icon(
+              icon,
+              color: primary ? Colors.white : scheme.onSurface,
+              size: 20,
             ),
-          ],
+          ),
         ),
-        child: Center(child: Icon(icon, color: color, size: 20)),
       ),
     );
   }
@@ -451,10 +479,10 @@ class _Heading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(top: 24, bottom: 12),
+    padding: const EdgeInsets.only(top: 20, bottom: 8),
     child: Text(
       text,
-      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
     ),
   );
 }

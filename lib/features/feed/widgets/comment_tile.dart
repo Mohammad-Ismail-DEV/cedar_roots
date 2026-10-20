@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
+import '../../../core/theme.dart';
+import '../../../core/time_label.dart';
 import '../../../models/post.dart';
 import '../../../shared/widgets/user_avatar.dart';
 
@@ -15,39 +16,65 @@ class CommentTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = context.palette;
     final author = comment.author;
+    final name = author?.name ?? 'User';
+    final time = shortAgo(comment.createdAt);
 
-    return ListTile(
-      leading: UserAvatar(
-        name: author?.name ?? 'User',
-        blob: author?.profilePicBlob,
-        imageUrl: author?.profilePic,
-        backgroundColor: Colors.grey,
-      ),
-      title: Text(
-        author?.name ?? 'User',
-        style: const TextStyle(fontWeight: FontWeight.bold),
-      ),
-      subtitle: Column(
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 6, 6, 6),
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(comment.content),
-          if (comment.createdAt != null)
-            Text(
-              DateFormat('yyyy-MM-dd HH:mm').format(comment.createdAt!),
-              style: const TextStyle(fontSize: 12, color: Colors.grey),
+          UserAvatar(
+            name: name,
+            blob: author?.profilePicBlob,
+            imageUrl: author?.profilePic,
+            radius: 17,
+            backgroundColor: palette.avatarBg,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text.rich(
+                    TextSpan(
+                      children: [
+                        TextSpan(
+                          text: name,
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                        TextSpan(text: ' ${comment.content}'),
+                      ],
+                    ),
+                    style: const TextStyle(fontSize: 14, height: 1.35),
+                  ),
+                  if (time.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(
+                        time,
+                        style: TextStyle(color: palette.muted, fontSize: 12),
+                      ),
+                    ),
+                ],
+              ),
             ),
+          ),
+          if (onDelete != null)
+            IconButton(
+              tooltip: 'Delete comment',
+              visualDensity: VisualDensity.compact,
+              icon: Icon(Icons.close, size: 18, color: palette.muted),
+              onPressed: onDelete,
+            )
+          else
+            const SizedBox(width: 12),
         ],
       ),
-      trailing:
-          onDelete == null
-              ? null
-              : IconButton(
-                icon: const Icon(Icons.delete_outline, color: Colors.red),
-                tooltip: 'Delete comment',
-                onPressed: onDelete,
-              ),
-      isThreeLine: true,
     );
   }
 }

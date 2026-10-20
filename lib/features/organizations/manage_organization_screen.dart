@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/ui.dart';
 import '../shell/app_routes.dart';
 import 'organization_providers.dart';
+import '../../core/theme.dart';
 
 /// Owner-only settings: members, edit details, delete.
 class ManageOrganizationScreen extends ConsumerWidget {
@@ -35,17 +36,7 @@ class ManageOrganizationScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: const Text(
-          'Manage Organization',
-          style: TextStyle(color: Colors.black),
-        ),
-        centerTitle: true,
-        backgroundColor: Colors.white,
-        elevation: 1,
-        iconTheme: const IconThemeData(color: Colors.black),
-      ),
+      appBar: AppBar(title: const Text('Manage Organization')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -84,48 +75,36 @@ class _ManageTile extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.onTap,
-    this.color = Colors.black,
+    this.color,
   });
 
   final IconData icon;
   final String title;
   final VoidCallback onTap;
-  final Color color;
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
+    final tint = color == Colors.red ? context.palette.danger : null;
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        margin: const EdgeInsets.only(bottom: 12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          boxShadow: const [
-            BoxShadow(
-              color: Colors.black12,
-              blurRadius: 6,
-              offset: Offset(0, 3),
-            ),
-          ],
-        ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 16),
         child: Row(
           children: [
-            Icon(icon, color: color),
-            const SizedBox(width: 12),
+            Icon(icon, color: tint),
+            const SizedBox(width: 14),
             Expanded(
               child: Text(
                 title,
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: 15,
                   fontWeight: FontWeight.w600,
-                  color: color,
+                  color: tint,
                 ),
               ),
             ),
-            const Icon(Icons.chevron_right, color: Colors.black45),
+            Icon(Icons.chevron_right, color: context.palette.muted),
           ],
         ),
       ),

@@ -11,6 +11,7 @@ import '../../data/media_repository.dart';
 import '../../data/organization_repository.dart';
 import '../../shared/widgets/shadow_button.dart';
 import 'organization_providers.dart';
+import '../../core/theme.dart';
 
 /// Create an organization, or edit one when [organizationId] is given.
 class OrganizationFormScreen extends ConsumerStatefulWidget {
@@ -138,16 +139,8 @@ class _OrganizationFormScreenState
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
       child: Scaffold(
-        backgroundColor: Colors.white,
         appBar: AppBar(
-          backgroundColor: Colors.white,
-          elevation: 1,
-          title: Text(
-            _isEditing ? 'Edit Organization' : 'Create Organization',
-            style: const TextStyle(color: Colors.black),
-          ),
-          iconTheme: const IconThemeData(color: Colors.black),
-          centerTitle: true,
+          title: Text(_isEditing ? 'Edit Organization' : 'Create Organization'),
         ),
         body:
             _loading
@@ -162,13 +155,13 @@ class _OrganizationFormScreenState
                         child: Center(
                           child: CircleAvatar(
                             radius: 48,
-                            backgroundColor: Colors.grey[200],
+                            backgroundColor: context.palette.inputBg,
                             backgroundImage: _logoImage(context),
                             child:
                                 _logoImage(context) == null
-                                    ? const Icon(
+                                    ? Icon(
                                       Icons.camera_alt,
-                                      color: Colors.grey,
+                                      color: context.palette.muted,
                                       size: 30,
                                     )
                                     : null,

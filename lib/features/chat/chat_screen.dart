@@ -8,7 +8,9 @@ import '../../core/photo_crop.dart';
 import '../../core/providers.dart';
 import '../../core/session.dart';
 import '../../models/message.dart';
+import '../../core/theme.dart';
 import 'chat_controller.dart';
+import 'presence_provider.dart';
 import 'image_preview_screen.dart';
 import 'widgets/chat_chips.dart';
 import 'widgets/chat_message_bubble.dart';
@@ -120,6 +122,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final chat = ref.watch(chatControllerProvider(id));
     final me = ref.watch(currentUserIdProvider) ?? 0;
     final connected = ref.watch(socketConnectedProvider).valueOrNull ?? true;
+    final presence = ref.watch(presenceProvider(id));
 
     // Jump to the newest message when I send one.
     ref.listen(chatControllerProvider(id).select((s) => s.messages.length), (
@@ -141,7 +144,19 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           children: [
             Text(widget.name),
             if (chat.otherTyping)
-              const Text('typing…', style: TextStyle(fontSize: 12)),
+              const Text('typing…', style: TextStyle(fontSize: 12))
+            else if (presence.label().isNotEmpty)
+              Text(
+                presence.label(),
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w400,
+                  color:
+                      presence.online
+                          ? const Color(0xFF31A24C)
+                          : context.palette.muted,
+                ),
+              ),
           ],
         ),
       ),

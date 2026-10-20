@@ -1,17 +1,26 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/session.dart';
+import '../../core/theme.dart';
 import '../../core/ui.dart';
-import '../chat/chats_screen.dart';
+import '../../shared/widgets/wordmark.dart';
+import '../chat/conversations_provider.dart';
+import '../notifications/notifications_provider.dart';
+import '../profile/profile_provider.dart';
 import '../shell/app_routes.dart';
 import 'feed_provider.dart';
+import 'saved_posts.dart';
+import 'stories.dart';
+import 'story_create_screen.dart';
+import 'story_viewer_screen.dart';
+import '../../models/post.dart';
+import '../../models/story.dart';
 import 'widgets/comment_sheet.dart';
-import 'widgets/event_card.dart';
 import 'widgets/post_card.dart';
-import 'widgets/search_overlay.dart';
+import 'widgets/post_menu.dart';
+import 'widgets/share_sheet.dart';
+import 'widgets/stories_row.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -21,28 +30,7 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
-  final _search = TextEditingController();
-  Timer? _debounce;
-  String _query = '';
-
-  @override
-  void dispose() {
-    _search.dispose();
-    _debounce?.cancel();
-    super.dispose();
-  }
-
-  void _onSearchChanged(String text) {
-    _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 400), () {
-      if (mounted) setState(() => _query = text.trim());
-    });
-  }
-
   Future<void> _refresh() async {
-    FocusScope.of(context).unfocus();
-    _search.clear();
-    setState(() => _query = '');
     try {
       await ref.read(feedProvider.notifier).refresh();
     } catch (e) {
@@ -100,114 +88,188 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
   }
 
+  void _share(Post post) {
+    if (!_requireLogin('share posts')) return;
+    showShareSheet(context, post);
+  }
+
+  Future<void> _save(int postId) async {
+    if (!_requireLogin('save posts')) return;
+    try {
+      await ref.read(savedPostsProvider.notifier).toggle(postId);
+    } catch (e) {
+      if (mounted) showErrorSnack(context, e);
+    }
+  }
+
+  void _createStory() {
+    Navigator.push(
+      context,
+      MaterialPageRoute<void>(builder: (_) => const StoryCreateScreen()),
+    );
+  }
+
+  void _openStory(List<StoryGroup> groups, int index) {
+    Navigator.push(
+      context,
+      PageRouteBuilder<void>(
+        opaque: true,
+        pageBuilder:
+            (_, __, ___) =>
+                StoryViewerScreen(groups: groups, initialGroup: index),
+        transitionsBuilder:
+            (_, animation, __, child) =>
+                FadeTransition(opacity: animation, child: child),
+      ),
+    );
+  }
+
+  Widget _headerIcon({
+    required IconData icon,
+    required String tooltip,
+    required int count,
+    required VoidCallback onPressed,
+  }) {
+    return IconButton(
+      tooltip: tooltip,
+      onPressed: onPressed,
+      icon: Badge(
+        isLabelVisible: count > 0,
+        backgroundColor: context.palette.heart,
+        label: Text(count > 99 ? '99+' : '$count'),
+        child: Icon(icon, size: 26),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final me = ref.watch(currentUserIdProvider);
     final loggedIn = me != null;
     final feed = ref.watch(feedProvider);
+    final saved = ref.watch(savedPostsProvider);
+    final stories =
+        ref.watch(storiesProvider).valueOrNull ?? const <StoryGroup>[];
+    final myUser =
+        loggedIn ? ref.watch(profileProvider(me)).valueOrNull?.user : null;
+
+    final unreadAlerts =
+        ref
+            .watch(notificationsProvider)
+            .valueOrNull
+            ?.where((n) => !n.isRead)
+            .length ??
+        0;
+    final unreadChats =
+        ref
+            .watch(conversationsProvider)
+            .valueOrNull
+            ?.fold<int>(0, (sum, c) => sum + c.unreadCount) ??
+        0;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Cedar Roots'),
+        titleSpacing: 16,
+        title: const Wordmark(),
         actions: [
-          if (loggedIn)
-            IconButton(
-              icon: const Icon(Icons.chat),
+          if (loggedIn) ...[
+            _headerIcon(
+              icon: Icons.favorite_border,
+              tooltip: 'Notifications',
+              count: unreadAlerts,
               onPressed:
-                  () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const ChatsScreen()),
-                  ),
+                  () => Navigator.push(context, AppRoutes.notifications()),
             ),
+            _headerIcon(
+              icon: Icons.send_outlined,
+              tooltip: 'Messages',
+              count: unreadChats,
+              onPressed: () => Navigator.push(context, AppRoutes.chats()),
+            ),
+            const SizedBox(width: 4),
+          ],
         ],
       ),
-      body: Stack(
-        children: [
-          Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(8),
-                child: TextField(
-                  controller: _search,
-                  enabled: loggedIn,
-                  onChanged: loggedIn ? _onSearchChanged : null,
-                  decoration: InputDecoration(
-                    filled: true,
-                    fillColor: Colors.white,
-                    hintText: loggedIn ? 'Search' : 'Login to search',
-                    prefixIcon: const Icon(Icons.search),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+      body: feed.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error:
+            (error, _) => Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(errorMessage(error)),
+                  TextButton(
+                    onPressed: () => ref.invalidate(feedProvider),
+                    child: const Text('Retry'),
                   ),
-                ),
+                ],
               ),
-              Expanded(
-                child: feed.when(
-                  loading:
-                      () => const Center(child: CircularProgressIndicator()),
-                  error:
-                      (error, _) => Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(errorMessage(error)),
-                            TextButton(
-                              onPressed: () => ref.invalidate(feedProvider),
-                              child: const Text('Retry'),
-                            ),
-                          ],
+            ),
+        data: (items) {
+          final posts = items.whereType<PostFeedItem>().map((i) => i.post);
+          final unseen = {
+            for (final g in stories)
+              if (!g.allSeen && g.user.id != me) g.user.id,
+          };
+
+          return RefreshIndicator(
+            onRefresh: _refresh,
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              children: [
+                if (loggedIn) ...[
+                  StoriesRow(
+                    me: myUser,
+                    groups: stories,
+                    myUserId: me,
+                    onCreate: _createStory,
+                    onOpen: (i) => _openStory(stories, i),
+                  ),
+                  const Divider(),
+                ],
+                if (posts.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 120),
+                    child: Center(child: Text('Nothing here yet.')),
+                  ),
+                for (final post in posts)
+                  PostCard(
+                    key: ValueKey(post.id),
+                    post: post,
+                    currentUserId: me ?? 0,
+                    saved: saved.contains(post.id),
+                    hasStory: unseen.contains(post.userId),
+                    onOpen:
+                        () => Navigator.push(context, AppRoutes.post(post.id)),
+                    onOpenAuthor:
+                        () => Navigator.push(
+                          context,
+                          AppRoutes.profile(post.userId),
                         ),
-                      ),
-                  data:
-                      (items) => RefreshIndicator(
-                        onRefresh: _refresh,
-                        child:
-                            items.isEmpty
-                                ? ListView(
-                                  children: const [
-                                    SizedBox(height: 120),
-                                    Center(child: Text('Nothing here yet.')),
-                                  ],
-                                )
-                                : ListView.builder(
-                                  itemCount: items.length,
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                  ),
-                                  itemBuilder: (context, index) {
-                                    return switch (items[index]) {
-                                      EventFeedItem(:final event) => EventCard(
-                                        event: event,
-                                        onTap:
-                                            () => Navigator.push(
-                                              context,
-                                              AppRoutes.event(event.id),
-                                            ),
-                                      ),
-                                      PostFeedItem(:final post) => PostCard(
-                                        post: post,
-                                        currentUserId: me ?? 0,
-                                        onOpen:
-                                            () => Navigator.push(
-                                              context,
-                                              AppRoutes.post(post.id),
-                                            ),
-                                        onLike: () => _like(post.id),
-                                        onComment: () => _comment(post.id),
-                                        onEdit: () => _edit(post.id),
-                                        onDelete: () => _delete(post.id),
-                                      ),
-                                    };
-                                  },
-                                ),
-                      ),
-                ),
-              ),
-            ],
-          ),
-          if (loggedIn && _query.isNotEmpty) SearchOverlay(query: _query),
-        ],
+                    onViewPhoto:
+                        () => Navigator.push(context, AppRoutes.post(post.id)),
+                    onLike: () => _like(post.id),
+                    onComment: () => _comment(post.id),
+                    onShare: () => _share(post),
+                    onSave: () => _save(post.id),
+                    onMenu:
+                        () => showPostMenu(
+                          context,
+                          isMine: post.userId == me,
+                          onOpen:
+                              () => Navigator.push(
+                                context,
+                                AppRoutes.post(post.id),
+                              ),
+                          onEdit: () => _edit(post.id),
+                          onDelete: () => _delete(post.id),
+                        ),
+                  ),
+                const SizedBox(height: 24),
+              ],
+            ),
+          );
+        },
       ),
     );
   }

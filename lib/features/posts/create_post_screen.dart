@@ -7,11 +7,13 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../core/image_url.dart';
 import '../../core/photo_crop.dart';
+import '../../core/session.dart';
 import '../../core/ui.dart';
 import '../../data/media_repository.dart';
 import '../../data/post_repository.dart';
 import '../../models/post.dart';
 import '../feed/feed_provider.dart';
+import '../profile/profile_provider.dart';
 
 class CreatePostScreen extends ConsumerStatefulWidget {
   const CreatePostScreen({super.key, this.existingPost});
@@ -86,6 +88,8 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
         await posts.create(content: content, imageUrl: imageUrl);
       }
 
+      final me = ref.read(currentUserIdProvider);
+      if (me != null) ref.invalidate(profileProvider(me));
       await ref.read(feedProvider.notifier).refresh();
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
@@ -98,7 +102,22 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(_isEditing ? 'Edit Post' : 'Create Post')),
+      appBar: AppBar(
+        title: Text(_isEditing ? 'Edit post' : 'New post'),
+        actions: [
+          TextButton(
+            onPressed: _submitting ? null : _submit,
+            child:
+                _submitting
+                    ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                    : Text(_isEditing ? 'Done' : 'Share'),
+          ),
+        ],
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -109,10 +128,16 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                   children: [
                     TextField(
                       controller: _content,
-                      maxLines: 5,
+                      minLines: 4,
+                      maxLines: 8,
+                      style: const TextStyle(fontSize: 16, height: 1.4),
                       decoration: const InputDecoration(
-                        hintText: "What's on your mind?",
-                        border: OutlineInputBorder(),
+                        hintText: 'Write a caption...',
+                        filled: false,
+                        border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        contentPadding: EdgeInsets.zero,
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -141,25 +166,17 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                             () => setState(() => _existingImageUrl = null),
                       )
                     else
-                      OutlinedButton.icon(
-                        onPressed: _pickImage,
-                        icon: const Icon(Icons.image),
-                        label: const Text('Add Image'),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: TextButton.icon(
+                          onPressed: _pickImage,
+                          icon: const Icon(Icons.image_outlined),
+                          label: const Text('Add Image'),
+                        ),
                       ),
                   ],
                 ),
               ),
-            ),
-            const SizedBox(height: 12),
-            ElevatedButton(
-              onPressed: _submitting ? null : _submit,
-              style: ElevatedButton.styleFrom(
-                minimumSize: const Size.fromHeight(45),
-              ),
-              child:
-                  _submitting
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : Text(_isEditing ? 'Update Post' : 'Post'),
             ),
           ],
         ),
@@ -188,7 +205,9 @@ class _Preview extends StatelessWidget {
           top: 4,
           right: 4,
           child: IconButton(
-            icon: const Icon(Icons.close, color: Colors.red),
+            icon: const Icon(Icons.close, color: Colors.white),
+            style: IconButton.styleFrom(backgroundColor: Colors.black54),
+            tooltip: 'Remove photo',
             onPressed: onRemove,
           ),
         ),

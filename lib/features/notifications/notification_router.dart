@@ -30,7 +30,8 @@ void openNotificationTarget({
     'event_announcement' ||
     'new_event' ||
     'event_invite' ||
-    'event_join' => switch (id('eventId')) {
+    'event_join' ||
+    'event_reminder' => switch (id('eventId')) {
       final eventId? => AppRoutes.event(eventId),
       _ => null,
     },

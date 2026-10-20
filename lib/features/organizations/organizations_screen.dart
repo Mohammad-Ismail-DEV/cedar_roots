@@ -8,6 +8,7 @@ import '../../shared/widgets/sign_in_required.dart';
 import '../../shared/widgets/user_avatar.dart';
 import '../shell/app_routes.dart';
 import 'organization_providers.dart';
+import '../../core/theme.dart';
 
 /// The organizations a user belongs to, with a button to create a new one.
 class OrganizationsScreen extends ConsumerWidget {
@@ -25,17 +26,7 @@ class OrganizationsScreen extends ConsumerWidget {
     final organizations = ref.watch(myOrganizationsProvider(target));
 
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 1,
-        title: const Text(
-          'My Organizations',
-          style: TextStyle(color: Colors.black),
-        ),
-        centerTitle: true,
-        iconTheme: const IconThemeData(color: Colors.black),
-      ),
+      appBar: AppBar(title: const Text('My Organizations')),
       bottomNavigationBar: Padding(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         child: SizedBox(
@@ -51,10 +42,7 @@ class OrganizationsScreen extends ConsumerWidget {
         ),
       ),
       body: organizations.when(
-        loading:
-            () => const Center(
-              child: CircularProgressIndicator(color: Colors.orangeAccent),
-            ),
+        loading: () => const Center(child: CircularProgressIndicator()),
         error:
             (error, _) => Center(
               child: Column(
@@ -71,78 +59,58 @@ class OrganizationsScreen extends ConsumerWidget {
             ),
         data: (list) {
           if (list.isEmpty) {
-            return const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.info_outline,
-                    size: 48,
-                    color: Colors.orangeAccent,
-                  ),
-                  SizedBox(height: 12),
-                  Text(
-                    'No Organizations',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    "You haven't created or joined any organizations yet.",
-                    textAlign: TextAlign.center,
-                  ),
-                ],
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text(
+                      'No Organizations',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      "You haven't created or joined any organizations yet.",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: context.palette.muted),
+                    ),
+                  ],
+                ),
               ),
             );
           }
 
-          return ListView.separated(
-            padding: const EdgeInsets.all(16),
+          return ListView.builder(
+            padding: const EdgeInsets.symmetric(vertical: 8),
             itemCount: list.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 16),
             itemBuilder: (context, index) {
               final org = list[index];
-              return InkWell(
+              return ListTile(
+                minTileHeight: 64,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                leading: UserAvatar(
+                  name: org.name,
+                  imageUrl: org.logo,
+                  blob: org.logoBlob,
+                  radius: 24,
+                  backgroundColor: context.palette.avatarBg,
+                ),
+                title: Text(
+                  org.name,
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+                trailing: Icon(
+                  Icons.chevron_right,
+                  color: context.palette.muted,
+                ),
                 onTap: () async {
                   await Navigator.push(context, AppRoutes.organization(org.id));
                   ref.invalidate(myOrganizationsProvider(target));
                 },
-                borderRadius: BorderRadius.circular(12),
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Colors.black12,
-                        blurRadius: 6,
-                        offset: Offset(0, 3),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    children: [
-                      UserAvatar(
-                        name: org.name,
-                        imageUrl: org.logo,
-                        radius: 26,
-                        backgroundColor: Colors.grey[400]!,
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Text(
-                          org.name,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black87,
-                          ),
-                        ),
-                      ),
-                      const Icon(Icons.chevron_right, color: Colors.black45),
-                    ],
-                  ),
-                ),
               );
             },
           );

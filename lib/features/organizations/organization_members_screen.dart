@@ -10,6 +10,7 @@ import '../../models/user.dart';
 import '../../shared/widgets/shadow_button.dart';
 import '../../shared/widgets/user_avatar.dart';
 import 'organization_providers.dart';
+import '../../core/theme.dart';
 
 class OrganizationMembersScreen extends ConsumerStatefulWidget {
   const OrganizationMembersScreen({super.key, required this.organizationId});
@@ -65,9 +66,9 @@ class _OrganizationMembersScreenState
                     ),
                     TextButton(
                       onPressed: () => Navigator.pop(ctx, 'remove'),
-                      child: const Text(
+                      child: Text(
                         'Remove',
-                        style: TextStyle(color: Colors.red),
+                        style: TextStyle(color: context.palette.danger),
                       ),
                     ),
                   ],
@@ -169,14 +170,14 @@ class _OrganizationMembersScreenState
                               leading: UserAvatar(
                                 name: user?.name ?? '?',
                                 imageUrl: user?.profilePic,
-                                backgroundColor: Colors.grey,
+                                backgroundColor: context.palette.avatarBg,
                               ),
                               title: Text(user?.name ?? 'Unknown'),
                               subtitle: Text(member.role.name),
                               trailing: IconButton(
-                                icon: const Icon(
+                                icon: Icon(
                                   Icons.edit,
-                                  color: Colors.black45,
+                                  color: context.palette.muted,
                                 ),
                                 onPressed: () => _editMember(member),
                               ),

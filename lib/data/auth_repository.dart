@@ -56,6 +56,31 @@ class AuthRepository {
     await _signIn(data);
   }
 
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) => api.post(
+    '/auth/change-password',
+    body: {'current_password': currentPassword, 'new_password': newPassword},
+  );
+
+  /// Sends a code to [newEmail]; finish with [confirmEmailChange].
+  Future<void> startEmailChange({
+    required String newEmail,
+    required String password,
+  }) => api.post(
+    '/auth/email-change',
+    body: {'new_email': newEmail, 'password': password},
+  );
+
+  Future<String> confirmEmailChange(String code) async {
+    final data = await api.post(
+      '/auth/email-change/confirm',
+      body: {'code': code},
+    );
+    return asMap(data)?['email']?.toString() ?? '';
+  }
+
   Future<void> logout() async {
     await push.unregister();
     await session.signOut();

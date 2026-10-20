@@ -52,6 +52,9 @@ dependencies:
   http_parser: ^4.1.2
   gal: ^2.3.3
   cached_network_image: ^3.4.0
+  google_fonts: ^6.2.1
+  share_plus: ^10.0.0
+  app_links: ^6.4.0
 
 dev_dependencies:
   flutter_test:
@@ -68,21 +71,34 @@ dev_dependencies:
 # following page: https://dart.dev/tools/pub/pubspec
 
 flutter_native_splash:
-  color: "#0B1E3A" # or your background color
-  image: assets/splash/roots.png # or tree_only_logo3.png
+  color: "#0F3D2E"
+  image: assets/icon/logo_mark.png
+  color_dark: "#0F3D2E"
+  image_dark: assets/icon/logo_mark.png
   android: true
   ios: true
   fullscreen: true
+  android_12:
+    color: "#0F3D2E"
+    image: assets/icon/icon_foreground.png
+    color_dark: "#0F3D2E"
+    image_dark: assets/icon/icon_foreground.png
 
+# Artwork is drawn by tool/make_icons.py.
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "assets/icon/roots.png"  # fallback
-  
+  image_path: "assets/icon/icon_full.png"
+  remove_alpha_ios: true
+  adaptive_icon_background: "#0F3D2E"
+  adaptive_icon_foreground: "assets/icon/icon_foreground.png"
+  adaptive_icon_monochrome: "assets/icon/icon_monochrome.png"
+
 # The following section is specific to Flutter packages.
 flutter:
   assets:
     - assets/images/crumpled_paper.png
+    - assets/icon/logo_mark.png
 
 
   # The following line ensures that the Material Icons font is

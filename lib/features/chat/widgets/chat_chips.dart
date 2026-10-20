@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme.dart';
+
 /// "March 3, 2026" pill between messages of different days.
 class DaySeparator extends StatelessWidget {
   const DaySeparator({super.key, required this.formattedDate});
@@ -13,10 +15,13 @@ class DaySeparator extends StatelessWidget {
         margin: const EdgeInsets.symmetric(vertical: 5),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(
-          color: Colors.grey[600],
-          borderRadius: BorderRadius.circular(10),
+          color: context.palette.inputBg,
+          borderRadius: BorderRadius.circular(12),
         ),
-        child: Text(formattedDate, style: const TextStyle(color: Colors.white)),
+        child: Text(
+          formattedDate,
+          style: TextStyle(color: context.palette.muted, fontSize: 12),
+        ),
       ),
     );
   }
@@ -32,12 +37,16 @@ class NewMessageIndicator extends StatelessWidget {
         margin: const EdgeInsets.symmetric(vertical: 8),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(
-          color: Colors.red[400],
-          borderRadius: BorderRadius.circular(10),
+          color: Theme.of(context).colorScheme.primary,
+          borderRadius: BorderRadius.circular(12),
         ),
         child: const Text(
           'New Messages',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w700,
+            fontSize: 12,
+          ),
         ),
       ),
     );
@@ -57,13 +66,18 @@ class ScrollToBottomButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Positioned(
-      bottom: 80,
+      bottom: 12,
       right: 20,
       child: Stack(
         alignment: Alignment.topRight,
         children: [
           FloatingActionButton.small(
-            backgroundColor: Colors.blue,
+            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+            foregroundColor: Theme.of(context).colorScheme.onSurface,
+            elevation: 3,
+            shape: CircleBorder(
+              side: BorderSide(color: context.palette.border),
+            ),
             onPressed: onPressed,
             child: const Icon(Icons.arrow_downward),
           ),
@@ -73,8 +87,8 @@ class ScrollToBottomButton extends StatelessWidget {
               top: 0,
               child: Container(
                 padding: const EdgeInsets.all(4),
-                decoration: const BoxDecoration(
-                  color: Colors.red,
+                decoration: BoxDecoration(
+                  color: context.palette.heart,
                   shape: BoxShape.circle,
                 ),
                 constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
