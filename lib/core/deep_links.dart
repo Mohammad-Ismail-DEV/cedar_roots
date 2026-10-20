@@ -77,6 +77,9 @@ Route<void> routeFor(DeepLink link) => switch (link.kind) {
 final deepLinksProvider = Provider<void>((ref) {
   final appLinks = AppLinks();
   DeepLink? pending;
+  // The launch link can arrive both as the initial link and on the stream.
+  String? lastUri;
+  DateTime lastAt = DateTime.fromMillisecondsSinceEpoch(0);
 
   Future<void> open(DeepLink link) async {
     // On a cold start the navigator may not be built yet; give it a moment.
@@ -93,6 +96,13 @@ final deepLinksProvider = Provider<void>((ref) {
   void handle(Uri uri) {
     final link = parseDeepLink(uri);
     if (link == null) return;
+    final now = DateTime.now();
+    if (lastUri == '$uri' &&
+        now.difference(lastAt) < const Duration(seconds: 2)) {
+      return;
+    }
+    lastUri = '$uri';
+    lastAt = now;
     AppLog.d('deep link $uri', 'links');
     if (ref.read(currentUserIdProvider) == null) {
       pending = link;
