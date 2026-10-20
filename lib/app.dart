@@ -28,7 +28,7 @@ class CedarRootsApp extends ConsumerWidget {
     ref.watch(deepLinksProvider);
 
     return MaterialApp(
-      navigatorObservers: [routeObserver],
+      navigatorObservers: [routeObserver, DismissKeyboardObserver()],
       navigatorKey: navigatorKey,
       title: 'Cedar Roots',
       debugShowCheckedModeBanner: false,
