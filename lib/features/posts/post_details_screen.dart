@@ -7,6 +7,7 @@ import '../../core/time_label.dart';
 import '../../core/ui.dart';
 import '../../models/post.dart';
 import '../../shared/widgets/counted_icon_button.dart';
+import '../feed/widgets/likes_sheet.dart';
 import '../../shared/widgets/post_media.dart';
 import '../../shared/widgets/user_avatar.dart';
 import '../chat/image_preview_screen.dart';
@@ -301,11 +302,14 @@ class _PostDetailsScreenState extends ConsumerState<PostDetailsScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           if (likes.isNotEmpty)
-                            Text(
-                              likes,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 14,
+                            GestureDetector(
+                              onTap: () => showLikesSheet(context, post.id),
+                              child: Text(
+                                likes,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 14,
+                                ),
                               ),
                             ),
                           if (hasPhoto && post.content.isNotEmpty)

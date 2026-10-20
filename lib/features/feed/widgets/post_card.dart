@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../shared/widgets/counted_icon_button.dart';
+import 'likes_sheet.dart';
 
 import '../../../core/theme.dart';
 import '../../../core/time_label.dart';
@@ -205,11 +206,14 @@ class _PostCardState extends State<PostCard>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (likesText.isNotEmpty)
-                  Text(
-                    likesText,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 14,
+                  GestureDetector(
+                    onTap: () => showLikesSheet(context, post.id),
+                    child: Text(
+                      likesText,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                      ),
                     ),
                   ),
                 if (hasPhoto && post.content.isNotEmpty)

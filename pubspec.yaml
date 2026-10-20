@@ -73,12 +73,16 @@ dev_dependencies:
 flutter_native_splash:
   color: "#0F3D2E"
   image: assets/icon/logo_mark.png
+  color_dark: "#0F3D2E"
+  image_dark: assets/icon/logo_mark.png
   android: true
   ios: true
   fullscreen: true
   android_12:
     color: "#0F3D2E"
     image: assets/icon/icon_foreground.png
+    color_dark: "#0F3D2E"
+    image_dark: assets/icon/icon_foreground.png
 
 # Artwork is drawn by tool/make_icons.py.
 flutter_launcher_icons:
