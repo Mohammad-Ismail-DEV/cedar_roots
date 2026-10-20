@@ -7,11 +7,13 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../core/image_url.dart';
 import '../../core/photo_crop.dart';
+import '../../core/session.dart';
 import '../../core/ui.dart';
 import '../../data/media_repository.dart';
 import '../../data/post_repository.dart';
 import '../../models/post.dart';
 import '../feed/feed_provider.dart';
+import '../profile/profile_provider.dart';
 
 class CreatePostScreen extends ConsumerStatefulWidget {
   const CreatePostScreen({super.key, this.existingPost});
@@ -86,6 +88,8 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
         await posts.create(content: content, imageUrl: imageUrl);
       }
 
+      final me = ref.read(currentUserIdProvider);
+      if (me != null) ref.invalidate(profileProvider(me));
       await ref.read(feedProvider.notifier).refresh();
       if (mounted) Navigator.pop(context, true);
     } catch (e) {

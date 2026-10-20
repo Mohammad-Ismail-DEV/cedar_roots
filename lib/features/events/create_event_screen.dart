@@ -8,6 +8,8 @@ import '../../shared/widgets/shadow_button.dart';
 import '../../core/session.dart';
 import '../connections/connections_provider.dart';
 import '../feed/feed_provider.dart';
+import '../organizations/organization_providers.dart';
+import '../profile/profile_provider.dart';
 import '../../core/theme.dart';
 
 class CreateEventScreen extends ConsumerStatefulWidget {
@@ -81,6 +83,9 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
             collaborators: _collaborators.toList(),
           );
       ref.invalidate(feedProvider);
+      ref.invalidate(organizationProvider(widget.organizationId));
+      final me = ref.read(currentUserIdProvider);
+      if (me != null) ref.invalidate(profileProvider(me));
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       if (mounted) showErrorSnack(context, e);

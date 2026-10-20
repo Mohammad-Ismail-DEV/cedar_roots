@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/session.dart';
 import '../../data/chat_repository.dart';
 import '../../models/message.dart';
 
@@ -17,6 +18,7 @@ class ConversationsNotifier
 
   @override
   Future<List<Conversation>> build() async {
+    if (ref.watch(currentUserIdProvider) == null) return const [];
     final chat = ref.read(chatRepositoryProvider);
 
     final subscriptions = <StreamSubscription<dynamic>>[
