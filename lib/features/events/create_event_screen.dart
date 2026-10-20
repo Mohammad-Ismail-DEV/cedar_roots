@@ -6,6 +6,7 @@ import '../../core/ui.dart';
 import '../../data/event_repository.dart';
 import '../../shared/widgets/shadow_button.dart';
 import '../feed/feed_provider.dart';
+import '../../core/theme.dart';
 
 class CreateEventScreen extends ConsumerStatefulWidget {
   const CreateEventScreen({super.key, required this.organizationId});
@@ -88,7 +89,7 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
     labelText: label,
     border: const OutlineInputBorder(),
     focusedBorder: OutlineInputBorder(
-      borderSide: BorderSide(color: Colors.green.shade700, width: 1.5),
+      borderSide: BorderSide(color: context.palette.muted, width: 1),
     ),
   );
 
@@ -98,12 +99,7 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Create Event'),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        elevation: 1,
-      ),
+      appBar: AppBar(title: const Text('Create Event')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(
@@ -136,7 +132,10 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
                       ? 'Pick event date and time'
                       : DateFormat('MMM d, yyyy • h:mm a').format(_dateTime!),
                 ),
-                trailing: const Icon(Icons.calendar_today, color: Colors.grey),
+                trailing: Icon(
+                  Icons.calendar_today,
+                  color: context.palette.muted,
+                ),
                 onTap: _pickDateTime,
               ),
               const SizedBox(height: 24),
@@ -145,7 +144,7 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
                   : ShadowButton(
                     icon: Icons.check_circle_outline,
                     label: 'Create Event',
-                    color: Colors.green.shade700,
+                    color: Theme.of(context).colorScheme.primary,
                     onTap: _submit,
                   ),
             ],

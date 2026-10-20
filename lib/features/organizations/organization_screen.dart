@@ -3,11 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/session.dart';
+import '../../core/theme.dart';
 import '../../core/ui.dart';
 import '../../models/event.dart';
 import '../../models/organization.dart';
 import '../../shared/widgets/shadow_button.dart';
 import '../../shared/widgets/user_avatar.dart';
+import '../events/event_style.dart';
 import '../shell/app_routes.dart';
 import 'organization_providers.dart';
 
@@ -21,22 +23,11 @@ class OrganizationScreen extends ConsumerWidget {
     final organization = ref.watch(organizationProvider(organizationId));
 
     return Scaffold(
-      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 1,
-        title: const Text(
-          'Organization Profile',
-          style: TextStyle(color: Colors.black),
-        ),
-        centerTitle: true,
-        iconTheme: const IconThemeData(color: Colors.black),
+        title: Text(organization.valueOrNull?.name ?? 'Organization'),
       ),
       body: organization.when(
-        loading:
-            () => const Center(
-              child: CircularProgressIndicator(color: Colors.orangeAccent),
-            ),
+        loading: () => const Center(child: CircularProgressIndicator()),
         error:
             (error, _) => Center(
               child: Column(
@@ -75,8 +66,19 @@ class _Loaded extends ConsumerWidget {
     }
   }
 
+  Widget _stat(String value, String label) => Column(
+    children: [
+      Text(
+        value,
+        style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+      ),
+      Text(label, style: const TextStyle(fontSize: 13)),
+    ],
+  );
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final palette = context.palette;
     final me = ref.watch(currentUserIdProvider);
     final role = me == null ? null : org.roleOf(me);
     final following = me != null && org.isFollowedBy(me);
@@ -84,272 +86,231 @@ class _Loaded extends ConsumerWidget {
 
     return RefreshIndicator(
       onRefresh: notifier.reload,
-      child: SingleChildScrollView(
+      child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            UserAvatar(
-              name: org.name,
-              imageUrl: org.logo,
-              radius: 50,
-              backgroundColor: Colors.grey[400]!,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              org.name,
-              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              org.website ?? '',
-              style: const TextStyle(color: Colors.black54),
-            ),
-            const SizedBox(height: 20),
-            _About(org: org, canManage: role == OrgRole.owner),
-            const SizedBox(height: 12),
-            Row(
+        padding: const EdgeInsets.only(top: 14, bottom: 32),
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
               children: [
-                Expanded(
-                  child: _StatBox(
-                    Icons.people,
-                    'Followers',
-                    org.followers.length,
-                  ),
+                UserAvatar(
+                  name: org.name,
+                  imageUrl: org.logo,
+                  blob: org.logoBlob,
+                  radius: 40,
+                  backgroundColor: palette.avatarBg,
                 ),
-                const SizedBox(width: 12),
                 Expanded(
-                  child: _StatBox(Icons.event, 'Events', org.events.length),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _stat('${org.followers.length}', 'Followers'),
+                      _stat('${org.events.length}', 'Events'),
+                      _stat('${org.members.length}', 'Members'),
+                    ],
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-            if (me == null)
-              const Text('Login to follow this organization.')
-            else if (role == null)
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: ShadowButton(
-                  icon: following ? Icons.remove : Icons.add,
-                  label:
-                      following
-                          ? 'Unfollow Organization'
-                          : 'Follow Organization',
-                  color: following ? Colors.red : Colors.green,
-                  onTap: () => _run(context, notifier.toggleFollow),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  org.name,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                  ),
                 ),
-              )
-            else if (role.canManage)
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: ShadowButton(
-                  icon: Icons.add,
-                  label: 'Create Event',
-                  onTap:
-                      () => Navigator.push(
-                        context,
-                        AppRoutes.createEvent(org.id),
-                      ).then((_) => notifier.reload()),
-                ),
-              ),
-            const SizedBox(height: 24),
-            if (org.events.isEmpty)
-              const Text(
-                'No events yet.',
-                style: TextStyle(color: Colors.black54),
-              )
-            else
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Events',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
+                if (org.description != null && org.description!.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(
+                      org.description!,
+                      style: const TextStyle(height: 1.35),
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  for (final event in org.events) _EventCard(event: event),
-                ],
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _About extends StatelessWidget {
-  const _About({required this.org, required this.canManage});
-
-  final Organization org;
-  final bool canManage;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: const [
-          BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 3)),
-        ],
-      ),
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'About',
-                style: TextStyle(
-                  color: Colors.green,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
-              ),
-              if (canManage)
-                IconButton(
-                  onPressed: () async {
-                    final removed = await Navigator.push(
-                      context,
-                      AppRoutes.manageOrganization(org.id),
-                    );
-                    if (removed == true && context.mounted) {
-                      Navigator.pop(context, true);
-                    }
-                  },
-                  icon: const Icon(Icons.settings, color: Colors.black54),
-                  tooltip: 'Manage',
-                ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            (org.description == null || org.description!.isEmpty)
-                ? 'No description available.'
-                : org.description!,
-            style: const TextStyle(color: Colors.black87),
-          ),
-          if (org.location != null && org.location!.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: 12),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.location_on,
-                    color: Colors.orangeAccent,
-                    size: 20,
+                if (org.location != null && org.location!.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      org.location!,
+                      style: TextStyle(color: palette.muted, fontSize: 13),
+                    ),
                   ),
-                  const SizedBox(width: 6),
+                if (org.website != null && org.website!.isNotEmpty)
                   Text(
-                    org.location!,
-                    style: const TextStyle(color: Colors.black87),
+                    org.website!,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.primary,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
                   ),
-                ],
-              ),
+              ],
             ),
-        ],
-      ),
-    );
-  }
-}
-
-class _StatBox extends StatelessWidget {
-  const _StatBox(this.icon, this.label, this.value);
-
-  final IconData icon;
-  final String label;
-  final int value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
-          BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 3)),
-        ],
-      ),
-      child: Column(
-        children: [
-          Icon(icon, color: Colors.orangeAccent, size: 28),
-          const SizedBox(height: 8),
-          Text(
-            '$value',
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 4),
-          Text(label, style: const TextStyle(color: Colors.black54)),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+            child: Row(
+              children: [
+                if (me == null)
+                  Expanded(
+                    child: Text(
+                      'Login to follow this organization.',
+                      style: TextStyle(color: palette.muted),
+                    ),
+                  )
+                else if (role == null)
+                  Expanded(
+                    child: ShadowButton(
+                      label:
+                          following
+                              ? 'Unfollow Organization'
+                              : 'Follow Organization',
+                      color: following ? Colors.red : null,
+                      onTap: () => _run(context, notifier.toggleFollow),
+                    ),
+                  )
+                else ...[
+                  if (role.canManage)
+                    Expanded(
+                      child: ShadowButton(
+                        label: 'Create Event',
+                        onTap:
+                            () => Navigator.push(
+                              context,
+                              AppRoutes.createEvent(org.id),
+                            ),
+                      ),
+                    ),
+                  if (role == OrgRole.owner) ...[
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: ShadowButton(
+                        label: 'Manage',
+                        color: Colors.red,
+                        icon: Icons.settings_outlined,
+                        onTap: () async {
+                          final removed = await Navigator.push(
+                            context,
+                            AppRoutes.manageOrganization(org.id),
+                          );
+                          if (removed == true && context.mounted) {
+                            Navigator.pop(context, true);
+                          }
+                        },
+                      ),
+                    ),
+                  ],
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          Divider(color: palette.border),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: Text(
+              'Events',
+              style: Theme.of(
+                context,
+              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+            ),
+          ),
+          if (org.events.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                'No events yet.',
+                style: TextStyle(color: palette.muted),
+              ),
+            )
+          else
+            for (final event in org.events) _EventRow(event: event),
         ],
       ),
     );
   }
 }
 
-class _EventCard extends StatelessWidget {
-  const _EventCard({required this.event});
+class _EventRow extends StatelessWidget {
+  const _EventRow({required this.event});
 
   final Event event;
 
   @override
   Widget build(BuildContext context) {
+    final palette = context.palette;
+    final date = event.dateTime;
+
     return InkWell(
       onTap: () => Navigator.push(context, AppRoutes.event(event.id)),
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        width: double.infinity,
-        margin: const EdgeInsets.only(bottom: 16),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: const [
-            BoxShadow(
-              color: Colors.black12,
-              blurRadius: 6,
-              offset: Offset(0, 3),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Row(
           children: [
-            Text(
-              event.title.isEmpty ? 'Untitled Event' : event.title,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                gradient: eventGradient(event.id),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              alignment: Alignment.center,
+              child:
+                  date == null
+                      ? null
+                      : Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            DateFormat('d').format(date),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 18,
+                              height: 1.05,
+                            ),
+                          ),
+                          Text(
+                            DateFormat('MMM').format(date).toUpperCase(),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 10,
+                            ),
+                          ),
+                        ],
+                      ),
             ),
-            const SizedBox(height: 8),
-            if (event.dateTime != null)
-              Row(
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(
-                    Icons.access_time,
-                    size: 16,
-                    color: Colors.orangeAccent,
-                  ),
-                  const SizedBox(width: 6),
                   Text(
-                    DateFormat('MMM d, yyyy • h:mm a').format(event.dateTime!),
-                    style: const TextStyle(color: Colors.black87),
+                    event.title.isEmpty ? 'Untitled Event' : event.title,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                    ),
+                  ),
+                  Text(
+                    [
+                      if (date != null)
+                        DateFormat('EEE, MMM d • h:mm a').format(date),
+                      if (event.location != null && event.location!.isNotEmpty)
+                        event.location!,
+                    ].join(' · '),
+                    style: TextStyle(color: palette.muted, fontSize: 13),
                   ),
                 ],
               ),
-            const SizedBox(height: 8),
-            Text(
-              (event.location == null || event.location!.isEmpty)
-                  ? 'No location'
-                  : event.location!,
-              style: const TextStyle(color: Colors.black54),
             ),
           ],
         ),
