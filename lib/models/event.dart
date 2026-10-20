@@ -33,6 +33,8 @@ class Event {
     this.dateTime,
     this.createdAt,
     this.organization,
+    this.participantCount = 0,
+    this.isParticipant = false,
   });
 
   final int id;
@@ -43,6 +45,23 @@ class Event {
   final DateTime? dateTime;
   final DateTime? createdAt;
   final EventOrganization? organization;
+
+  /// How many people joined, and whether the signed-in user is one of them (events list only).
+  final int participantCount;
+  final bool isParticipant;
+
+  Event copyWith({int? participantCount, bool? isParticipant}) => Event(
+    id: id,
+    title: title,
+    organizationId: organizationId,
+    description: description,
+    location: location,
+    dateTime: dateTime,
+    createdAt: createdAt,
+    organization: organization,
+    participantCount: participantCount ?? this.participantCount,
+    isParticipant: isParticipant ?? this.isParticipant,
+  );
 
   factory Event.fromJson(Map<String, dynamic> json) {
     final org = asMap(json['Organization']);
@@ -55,6 +74,8 @@ class Event {
       dateTime: asDate(json['date_time']),
       createdAt: asDate(json['created_at']),
       organization: org == null ? null : EventOrganization.fromJson(org),
+      participantCount: asInt(json['participant_count']),
+      isParticipant: json['is_participant'] == true,
     );
   }
 }

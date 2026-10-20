@@ -7,10 +7,16 @@ import '../../core/image_url.dart';
 /// copy sized for this screen (tens of KB, not the multi-MB original), keeps it on disk so it
 /// is instant next time, and caps very tall photos in height instead of cropping them.
 class PostImage extends StatelessWidget {
-  const PostImage({super.key, required this.url, this.onTap});
+  const PostImage({
+    super.key,
+    required this.url,
+    this.onTap,
+    this.borderRadius = 8,
+  });
 
   final String url;
   final VoidCallback? onTap;
+  final double borderRadius;
 
   @override
   Widget build(BuildContext context) {
@@ -24,7 +30,7 @@ class PostImage extends StatelessWidget {
         return GestureDetector(
           onTap: onTap,
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(borderRadius),
             child: ConstrainedBox(
               constraints: BoxConstraints(maxHeight: screen.height * 0.75),
               child: CachedNetworkImage(

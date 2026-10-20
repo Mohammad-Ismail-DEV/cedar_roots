@@ -1,22 +1,25 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:image_picker/image_picker.dart';
 
 import '../../core/image_url.dart';
-import '../../core/photo_crop.dart';
 import '../../core/session.dart';
+import '../../core/theme.dart';
 import '../../core/ui.dart';
 import '../../models/connection.dart';
 import '../../models/post.dart';
+import '../../shared/widgets/post_tile.dart';
+import '../../shared/widgets/ring_avatar.dart';
 import '../../shared/widgets/shadow_button.dart';
 import '../../shared/widgets/sign_in_required.dart';
-import '../feed/widgets/comment_sheet.dart';
-import '../feed/widgets/post_card.dart';
+import '../../shared/widgets/user_avatar.dart';
+import '../feed/saved_posts.dart';
+import '../organizations/organization_providers.dart';
 import '../settings/settings_screen.dart';
 import '../shell/app_routes.dart';
+import 'edit_profile_screen.dart';
+import 'profile_actions.dart';
 import 'profile_provider.dart';
-import 'widgets/profile_header.dart';
 
 /// A user's profile. With no [userId] it shows the signed-in user's own profile.
 class ProfileScreen extends ConsumerWidget {
@@ -34,42 +37,33 @@ class ProfileScreen extends ConsumerWidget {
   }
 }
 
-class _Profile extends ConsumerWidget {
+class _Profile extends ConsumerStatefulWidget {
   const _Profile({required this.userId, required this.myUserId});
 
   final int userId;
   final int myUserId;
 
-  bool get _isMine => userId == myUserId;
+  @override
+  ConsumerState<_Profile> createState() => _ProfileState();
+}
 
-  ProfileNotifier _notifier(WidgetRef ref) =>
-      ref.read(profileProvider(userId).notifier);
+class _ProfileState extends ConsumerState<_Profile> {
+  bool _showSaved = false;
 
-  Future<void> _run(
-    BuildContext context,
-    Future<void> Function() action,
-  ) async {
+  int get _userId => widget.userId;
+  bool get _isMine => widget.userId == widget.myUserId;
+
+  ProfileNotifier get _notifier => ref.read(profileProvider(_userId).notifier);
+
+  Future<void> _run(Future<void> Function() action) async {
     try {
       await action();
     } catch (e) {
-      if (context.mounted) showErrorSnack(context, e);
+      if (mounted) showErrorSnack(context, e);
     }
   }
 
-  Future<void> _changePicture(BuildContext context, WidgetRef ref) async {
-    final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
-    if (picked == null) return;
-
-    final cropped = await cropPhoto(picked.path);
-    if (cropped == null || !context.mounted) return;
-
-    await _run(
-      context,
-      () => _notifier(ref).changeProfilePicture(XFile(cropped.path)),
-    );
-  }
-
-  void _showAvatar(BuildContext context, WidgetRef ref, String? url) {
+  void _showAvatar(String? url) {
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -97,32 +91,33 @@ class _Profile extends ConsumerWidget {
                               color: Colors.white,
                             ),
                   ),
-                  Positioned(
-                    top: 40,
-                    left: 20,
-                    child: TextButton(
-                      onPressed: () => Navigator.pop(ctx),
-                      child: const Text(
-                        'Back',
-                        style: TextStyle(color: Colors.white),
+                  SafeArea(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          IconButton(
+                            tooltip: 'Close',
+                            color: Colors.white,
+                            onPressed: () => Navigator.pop(ctx),
+                            icon: const Icon(Icons.close),
+                          ),
+                          if (_isMine)
+                            TextButton(
+                              onPressed: () {
+                                Navigator.pop(ctx);
+                                changeProfilePicture(context, ref, _userId);
+                              },
+                              child: const Text(
+                                'Change',
+                                style: TextStyle(color: Colors.white),
+                              ),
+                            ),
+                        ],
                       ),
                     ),
                   ),
-                  if (_isMine)
-                    Positioned(
-                      top: 40,
-                      right: 20,
-                      child: TextButton(
-                        onPressed: () {
-                          Navigator.pop(ctx);
-                          _changePicture(context, ref);
-                        },
-                        child: const Text(
-                          'Change',
-                          style: TextStyle(color: Colors.white),
-                        ),
-                      ),
-                    ),
                 ],
               ),
             ),
@@ -130,131 +125,310 @@ class _Profile extends ConsumerWidget {
     );
   }
 
-  Widget _connectionActions(
-    BuildContext context,
-    WidgetRef ref,
-    ProfileData data,
-  ) {
-    final notifier = _notifier(ref);
+  List<Widget> _connectionButtons(ProfileData data) {
+    Widget button(String label, VoidCallback onTap, {bool danger = false}) =>
+        Expanded(
+          child: ShadowButton(
+            label: label,
+            color: danger ? Colors.red : null,
+            onTap: onTap,
+          ),
+        );
+
+    final chat = button(
+      'Message',
+      () => Navigator.push(
+        context,
+        AppRoutes.chat(userId: _userId, name: data.user.name),
+      ),
+    );
 
     return switch (data.status) {
-      ConnectionStatus.accepted => ShadowButton(
-        label: 'Remove Connection',
-        color: Colors.red,
-        onTap: () => _run(context, notifier.disconnect),
-      ),
-      ConnectionStatus.pendingSent => ShadowButton(
-        label: 'Cancel Request',
-        color: Colors.red,
-        onTap: () => _run(context, notifier.disconnect),
-      ),
-      ConnectionStatus.pendingReceived => Row(
-        children: [
-          Expanded(
-            child: ShadowButton(
-              label: 'Accept',
-              onTap: () => _run(context, () => notifier.respond(accept: true)),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: ShadowButton(
-              label: 'Reject',
-              color: Colors.red,
-              onTap: () => _run(context, () => notifier.respond(accept: false)),
-            ),
-          ),
-        ],
-      ),
-      ConnectionStatus.none => ShadowButton(
-        label: 'Connect',
-        onTap: () => _run(context, notifier.connect),
-      ),
+      ConnectionStatus.accepted => [
+        button(
+          'Remove Connection',
+          () => _run(_notifier.disconnect),
+          danger: true,
+        ),
+        const SizedBox(width: 8),
+        chat,
+      ],
+      ConnectionStatus.pendingSent => [
+        button(
+          'Cancel Request',
+          () => _run(_notifier.disconnect),
+          danger: true,
+        ),
+      ],
+      ConnectionStatus.pendingReceived => [
+        button('Accept', () => _run(() => _notifier.respond(accept: true))),
+        const SizedBox(width: 8),
+        button(
+          'Reject',
+          () => _run(() => _notifier.respond(accept: false)),
+          danger: true,
+        ),
+      ],
+      ConnectionStatus.none => [
+        button('Connect', () => _run(_notifier.connect)),
+      ],
     };
   }
 
-  Widget _chatButton(BuildContext context, ProfileData data) {
-    return AspectRatio(
-      aspectRatio: 1,
-      child: InkWell(
-        onTap:
-            () => Navigator.push(
-              context,
-              AppRoutes.chat(userId: userId, name: data.user.name),
+  Widget _stat(String value, String label, {VoidCallback? onTap}) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        child: Column(
+          children: [
+            Text(
+              value,
+              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
             ),
-        borderRadius: BorderRadius.circular(8),
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(8),
-            boxShadow: const [
-              BoxShadow(
-                color: Colors.black12,
-                blurRadius: 6,
-                offset: Offset(0, 3),
-              ),
-            ],
-          ),
-          child: const Center(child: Icon(Icons.chat, color: Colors.green)),
+            Text(label, style: const TextStyle(fontSize: 13)),
+          ],
         ),
       ),
     );
   }
 
-  Widget _posts(BuildContext context, WidgetRef ref, ProfileData data) {
-    if (data.posts.isEmpty) return const Center(child: Text('No posts yet.'));
+  Widget _highlights() {
+    final orgs = ref.watch(myOrganizationsProvider(_userId)).valueOrNull ?? [];
+    if (orgs.isEmpty && !_isMine) return const SizedBox.shrink();
+    final palette = context.palette;
 
-    final notifier = _notifier(ref);
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      itemCount: data.posts.length,
-      itemBuilder: (context, index) {
-        final Post post = data.posts[index];
-        return PostCard(
-          post: post,
-          currentUserId: myUserId,
-          onOpen:
-              () => Navigator.push(
-                context,
-                AppRoutes.post(post.id),
-              ).then((_) => notifier.reloadPosts()),
-          onLike: () => _run(context, () => notifier.toggleLike(post.id)),
-          onComment:
-              () => showModalBottomSheet<void>(
-                context: context,
-                isScrollControlled: true,
-                builder: (_) => CommentSheet(postId: post.id),
-              ).then((_) => notifier.reloadPosts()),
-          onEdit:
-              () => Navigator.push(
-                context,
-                AppRoutes.createPost(editing: post),
-              ).then((_) => notifier.reloadPosts()),
-          onDelete: () async {
-            final confirmed = await confirm(
-              context,
-              title: 'Delete Post',
-              message: 'Are you sure you want to delete this post?',
-              confirmLabel: 'Delete',
-              destructive: true,
-            );
-            if (confirmed && context.mounted) {
-              await _run(context, () => notifier.deletePost(post.id));
-            }
-          },
-        );
-      },
+    Widget item(Widget circle, String label, VoidCallback onTap) => InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: SizedBox(
+        width: 70,
+        child: Column(
+          children: [
+            circle,
+            const SizedBox(height: 4),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 12),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    return SizedBox(
+      height: 98,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 4),
+        children: [
+          for (final org in orgs)
+            item(
+              Container(
+                padding: const EdgeInsets.all(2),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: palette.border),
+                ),
+                child: UserAvatar(
+                  name: org.name,
+                  imageUrl: org.logo,
+                  blob: org.logoBlob,
+                  radius: 28,
+                  backgroundColor: palette.avatarBg,
+                ),
+              ),
+              org.name,
+              () => Navigator.push(context, AppRoutes.organization(org.id)),
+            ),
+          if (_isMine)
+            item(
+              Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: palette.border),
+                ),
+                child: const Icon(Icons.add, size: 28),
+              ),
+              'New',
+              () => Navigator.push(context, AppRoutes.organizationForm()),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _tab(
+    IconData icon,
+    String tooltip,
+    bool selected,
+    VoidCallback onTap,
+  ) {
+    final color = Theme.of(context).colorScheme.onSurface;
+    return Expanded(
+      child: InkWell(
+        onTap: onTap,
+        child: Container(
+          height: 46,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            border: Border(
+              top: BorderSide(
+                color: selected ? color : Colors.transparent,
+                width: 1,
+              ),
+            ),
+          ),
+          child: Icon(
+            icon,
+            semanticLabel: tooltip,
+            color: selected ? color : context.palette.muted,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _header(ProfileData data) {
+    final user = data.user;
+    final palette = context.palette;
+    final orgCount =
+        ref.watch(myOrganizationsProvider(_userId)).valueOrNull?.length ?? 0;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+          child: Row(
+            children: [
+              GestureDetector(
+                onTap: () => _showAvatar(user.profilePic),
+                child: RingAvatar(
+                  name: user.name,
+                  imageUrl: user.profilePic,
+                  blob: user.profilePicBlob,
+                  radius: 40,
+                  ringed: _isMine || data.status == ConnectionStatus.accepted,
+                ),
+              ),
+              Expanded(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _stat('${data.posts.length}', 'Posts'),
+                    _stat(
+                      '${data.connectionsCount}',
+                      'Connections',
+                      onTap:
+                          () => Navigator.push(
+                            context,
+                            AppRoutes.connections(_userId),
+                          ),
+                    ),
+                    _stat('$orgCount', 'Organizations'),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                user.name,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14,
+                ),
+              ),
+              if (user.bio != null && user.bio!.isNotEmpty)
+                Text(user.bio!, style: const TextStyle(height: 1.35)),
+              if (user.location != null && user.location!.isNotEmpty)
+                Text(
+                  user.location!,
+                  style: TextStyle(color: palette.muted, fontSize: 13),
+                ),
+            ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+          child:
+              _isMine
+                  ? Row(
+                    children: [
+                      Expanded(
+                        child: ShadowButton(
+                          label: 'Edit profile',
+                          onTap:
+                              () => Navigator.push(
+                                context,
+                                MaterialPageRoute<void>(
+                                  builder: (_) => const EditProfileScreen(),
+                                ),
+                              ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: ShadowButton(
+                          label: 'Manage Organizations',
+                          color: Colors.red,
+                          onTap:
+                              () => Navigator.push(
+                                context,
+                                AppRoutes.organizations(_userId),
+                              ),
+                        ),
+                      ),
+                    ],
+                  )
+                  : Row(children: _connectionButtons(data)),
+        ),
+        _highlights(),
+        Divider(color: palette.border),
+        if (_isMine)
+          Row(
+            children: [
+              _tab(
+                Icons.grid_on_outlined,
+                'Posts',
+                !_showSaved,
+                () => setState(() => _showSaved = false),
+              ),
+              _tab(
+                Icons.bookmark_border,
+                'Saved',
+                _showSaved,
+                () => setState(() => _showSaved = true),
+              ),
+            ],
+          )
+        else
+          Row(children: [_tab(Icons.grid_on_outlined, 'Posts', true, () {})]),
+      ],
     );
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final profile = ref.watch(profileProvider(userId));
+  Widget build(BuildContext context) {
+    final profile = ref.watch(profileProvider(_userId));
 
     return profile.when(
       loading:
-          () =>
-              const Scaffold(body: Center(child: CircularProgressIndicator())),
+          () => Scaffold(
+            appBar: AppBar(),
+            body: const Center(child: CircularProgressIndicator()),
+          ),
       error:
           (error, _) => Scaffold(
             appBar: AppBar(),
@@ -264,99 +438,76 @@ class _Profile extends ConsumerWidget {
                 children: [
                   Text(errorMessage(error)),
                   TextButton(
-                    onPressed: () => ref.invalidate(profileProvider(userId)),
+                    onPressed: () => ref.invalidate(profileProvider(_userId)),
                     child: const Text('Retry'),
                   ),
                 ],
               ),
             ),
           ),
-      data: (data) => _loaded(context, ref, data),
+      data: _loaded,
     );
   }
 
-  Widget _loaded(BuildContext context, WidgetRef ref, ProfileData data) {
+  Widget _loaded(ProfileData data) {
+    final saved =
+        _isMine && _showSaved
+            ? ref.watch(savedPostObjectsProvider)
+            : const AsyncData<List<Post>>([]);
+    final List<Post> posts =
+        _isMine && _showSaved ? (saved.valueOrNull ?? []) : data.posts;
+    final emptyText =
+        _showSaved ? 'Posts you save will appear here.' : 'No posts yet.';
+
     return Scaffold(
       appBar: AppBar(
-        elevation: 0,
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      ),
-      body: Column(
-        children: [
-          ProfileHeader(
-            user: data.user,
-            connectionsCount: data.connectionsCount,
-            onConnectionsTap:
-                () => Navigator.push(context, AppRoutes.connections(userId)),
-            onSettingsTap:
-                _isMine
-                    ? () => Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const SettingsScreen()),
-                    )
-                    : null,
-            onAvatarTap: () => _showAvatar(context, ref, data.user.profilePic),
-          ),
-          if (!_isMine)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: IntrinsicHeight(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    if (data.status == ConnectionStatus.accepted) ...[
-                      _chatButton(context, data),
-                      const SizedBox(width: 12),
-                    ],
-                    Expanded(child: _connectionActions(context, ref, data)),
-                  ],
-                ),
-              ),
-            )
-          else
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: ShadowButton(
-                label: 'Manage Organizations',
-                icon: Icons.admin_panel_settings,
-                color: const Color(0xFF0B1E3A),
-                onTap:
-                    () => Navigator.push(
-                      context,
-                      AppRoutes.organizations(userId),
+        title: Text(data.user.name),
+        actions: [
+          if (_isMine)
+            IconButton(
+              tooltip: 'Settings',
+              icon: const Icon(Icons.menu),
+              onPressed:
+                  () => Navigator.push(
+                    context,
+                    MaterialPageRoute<void>(
+                      builder: (_) => const SettingsScreen(),
                     ),
-              ),
+                  ),
             ),
-          const Divider(),
-          Expanded(child: _posts(context, ref, data)),
         ],
       ),
-      floatingActionButton:
-          _isMine
-              ? SizedBox(
-                width: 200,
-                height: 50,
-                child: ElevatedButton.icon(
-                  onPressed:
-                      () => Navigator.push(
-                        context,
-                        AppRoutes.createPost(),
-                      ).then((_) => _notifier(ref).reloadPosts()),
-                  icon: const Icon(Icons.add, color: Colors.blue, size: 26),
-                  label: const Text(
-                    'Create Post',
-                    style: TextStyle(fontSize: 16, color: Colors.blue),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    elevation: 6,
-                    backgroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+      body: RefreshIndicator(
+        onRefresh: () async => ref.invalidate(profileProvider(_userId)),
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            SliverToBoxAdapter(child: _header(data)),
+            if (posts.isEmpty)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 48),
+                  child: Center(
+                    child:
+                        saved.isLoading && _showSaved
+                            ? const CircularProgressIndicator()
+                            : Text(
+                              emptyText,
+                              style: TextStyle(color: context.palette.muted),
+                            ),
                   ),
                 ),
               )
-              : null,
+            else
+              PostGrid(
+                posts: posts,
+                onOpen:
+                    (post) => Navigator.push(context, AppRoutes.post(post.id)),
+              ),
+            const SliverToBoxAdapter(child: SizedBox(height: 24)),
+          ],
+        ),
+      ),
     );
   }
 }

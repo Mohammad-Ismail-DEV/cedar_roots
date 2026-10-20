@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../models/post.dart';
 import '../chat/chat_screen.dart';
+import '../chat/chats_screen.dart';
+import '../notifications/notifications_screen.dart';
 import '../connections/connections_screen.dart';
 import '../events/create_event_screen.dart';
 import '../events/event_details_screen.dart';
@@ -21,6 +23,10 @@ class AppRoutes {
 
   static Route<T> _page<T>(Widget screen) =>
       MaterialPageRoute<T>(builder: (_) => screen);
+
+  static Route<void> notifications() => _page(const NotificationsScreen());
+
+  static Route<void> chats() => _page(const ChatsScreen());
 
   static Route<void> profile(int userId) =>
       _page(ProfileScreen(userId: userId));

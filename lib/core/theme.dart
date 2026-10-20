@@ -125,7 +125,11 @@ ThemeData buildTheme(Brightness brightness) {
     scaffoldBackgroundColor: bg,
     canvasColor: bg,
     dividerColor: palette.border,
-    dividerTheme: DividerThemeData(color: palette.border, thickness: 1, space: 1),
+    dividerTheme: DividerThemeData(
+      color: palette.border,
+      thickness: 1,
+      space: 1,
+    ),
     extensions: [palette],
     appBarTheme: AppBarTheme(
       backgroundColor: bg,
