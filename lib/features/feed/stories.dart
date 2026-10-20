@@ -45,10 +45,8 @@ class StoriesNotifier extends AsyncNotifier<List<StoryGroup>> {
   /// Marks a story watched on screen straight away and tells the server.
   Future<void> markViewed(int userId, int storyId) async {
     final groups = state.valueOrNull;
-    if (groups == null) return;
-
     final me = ref.read(currentUserIdProvider);
-    if (userId != me) {
+    if (groups != null && userId != me) {
       state = AsyncData([
         for (final g in groups)
           if (g.user.id == userId) g.markViewed(storyId) else g,
