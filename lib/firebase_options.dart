@@ -56,11 +56,11 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyBPFOdyk21yAZNhMfsV4GqFJK833yuIBGQ',
-    appId: '1:344338108473:android:4f42e475e0f5942b45bde8',
-    messagingSenderId: '344338108473',
-    projectId: 'cedar-roots-453719',
-    storageBucket: 'cedar-roots-453719.firebasestorage.app',
+    apiKey: 'AIzaSyC6XWUSD_M9BpFhitAhPI_DW-BOLkvFwWk',
+    appId: '1:892632208490:android:71bbdb6a6c7e40c73e2613',
+    messagingSenderId: '892632208490',
+    projectId: 'cedar-roots-b7a59',
+    storageBucket: 'cedar-roots-b7a59.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(

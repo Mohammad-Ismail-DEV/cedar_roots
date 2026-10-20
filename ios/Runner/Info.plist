@@ -49,5 +49,11 @@
 		<true/>
 		<key>UIViewControllerBasedStatusBarAppearance</key>
 		<false/>
+		<key>NSPhotoLibraryUsageDescription</key>
+		<string>Choose photos to share in posts, chats and profiles.</string>
+		<key>NSPhotoLibraryAddUsageDescription</key>
+		<string>Save photos from chats to your library.</string>
+		<key>NSCameraUsageDescription</key>
+		<string>Take photos to share in posts and chats.</string>
 	</dict>
 </plist>
