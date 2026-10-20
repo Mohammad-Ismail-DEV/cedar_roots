@@ -66,7 +66,8 @@ class StoriesRow extends StatelessWidget {
                         imageUrl: me?.profilePic,
                         blob: me?.profilePicBlob,
                         radius: 30,
-                        ringed: hasMine,
+                        ringed: hasMine && !groups[myIndex].allSeen,
+                        dimRing: hasMine && groups[myIndex].allSeen,
                       ),
                     ),
                     Positioned(
