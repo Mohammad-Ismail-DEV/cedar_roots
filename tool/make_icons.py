@@ -87,14 +87,14 @@ def on_background(layer, color=GREEN):
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
 
-    foreground = mark(CREAM, GOLD)
+    foreground = mark(CREAM, GOLD, scale=0.8)
     foreground.save(OUT / "icon_foreground.png")
 
-    mono = mark(WHITE, WHITE)
+    mono = mark(WHITE, WHITE, scale=0.8)
     mono.save(OUT / "icon_monochrome.png")
 
     # Legacy / iOS icon: square, opaque, mark a little larger since there is no mask padding.
-    full = on_background(mark(CREAM, GOLD, scale=1.22)).convert("RGB")
+    full = on_background(mark(CREAM, GOLD, scale=0.95)).convert("RGB")
     full.save(OUT / "icon_full.png")
 
     # In-app and splash logo: the mark alone, tight, on transparent.
