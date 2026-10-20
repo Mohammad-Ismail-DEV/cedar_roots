@@ -1,96 +1,78 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/providers.dart';
 import '../../core/session.dart';
-import '../../models/post.dart';
-import '../../models/user.dart';
-import 'feed_provider.dart';
+import '../../data/story_repository.dart';
+import '../../models/story.dart';
 
-/// One person with something recent to show: their newest post.
-class StoryEntry {
-  const StoryEntry({
-    required this.author,
-    required this.latest,
-    required this.seen,
-  });
+/// Stories from me and my connections (the last 24 hours). Mine come first, then people
+/// with something I have not watched. Refreshes itself when the server says stories changed.
+final storiesProvider =
+    AsyncNotifierProvider<StoriesNotifier, List<StoryGroup>>(
+      StoriesNotifier.new,
+    );
 
-  final User author;
-  final Post latest;
-  final bool seen;
-}
-
-/// Post ids whose "story" the signed-in user already watched. Kept on the device.
-final seenStoriesProvider = NotifierProvider<SeenStoriesNotifier, Set<int>>(
-  SeenStoriesNotifier.new,
-);
-
-class SeenStoriesNotifier extends Notifier<Set<int>> {
-  String? get _key {
-    final me = ref.read(currentUserIdProvider);
-    return me == null ? null : 'stories_seen:$me';
-  }
+class StoriesNotifier extends AsyncNotifier<List<StoryGroup>> {
+  StoryRepository get _repo => ref.read(storyRepositoryProvider);
 
   @override
-  Set<int> build() {
-    ref.watch(currentUserIdProvider);
-    final key = _key;
-    if (key == null) return const {};
-    final seen = ref.read(sharedPreferencesProvider).getStringList(key);
-    return {
-      for (final id in seen ?? const <String>[])
-        if (int.tryParse(id) case final n?) n,
-    };
+  Future<List<StoryGroup>> build() async {
+    final me = ref.watch(currentUserIdProvider);
+    if (me == null) return const [];
+
+    final socket = ref.read(socketClientProvider);
+    final live = socket
+        .on('stories_changed')
+        .listen((_) => unawaited(refresh().catchError((_) {})));
+    final reconnected = socket.connection
+        .where((connected) => connected)
+        .listen((_) => unawaited(refresh().catchError((_) {})));
+    ref.onDispose(() {
+      live.cancel();
+      reconnected.cancel();
+    });
+
+    return _repo.feed();
   }
 
-  void mark(int postId) {
-    if (state.contains(postId)) return;
-    // Only the newest 200 are kept so the list cannot grow forever.
-    final next = {...state, postId};
-    final trimmed =
-        next.length > 200 ? next.skip(next.length - 200).toSet() : next;
-    state = trimmed;
-    final key = _key;
-    if (key != null) {
-      ref.read(sharedPreferencesProvider).setStringList(key, [
-        for (final id in trimmed) '$id',
+  /// Throws on failure so pull-to-refresh can tell the user; the old rings stay.
+  Future<void> refresh() async {
+    state = AsyncData(await _repo.feed());
+  }
+
+  /// Marks a story watched on screen straight away and tells the server.
+  Future<void> markViewed(int userId, int storyId) async {
+    final groups = state.valueOrNull;
+    if (groups == null) return;
+
+    final me = ref.read(currentUserIdProvider);
+    if (userId != me) {
+      state = AsyncData([
+        for (final g in groups)
+          if (g.user.id == userId) g.markViewed(storyId) else g,
       ]);
     }
+    try {
+      await _repo.markViewed(storyId);
+    } catch (_) {
+      // Watching still works; the ring just stays unseen until the next refresh.
+    }
+  }
+
+  Future<void> delete(int storyId) async {
+    await _repo.delete(storyId);
+    await refresh();
   }
 }
 
-/// People (other than me) who posted in the last week, unseen first.
-final storiesProvider = Provider<List<StoryEntry>>((ref) {
+/// My own group of stories, or null when I have none right now.
+final myStoriesProvider = Provider<StoryGroup?>((ref) {
   final me = ref.watch(currentUserIdProvider);
-  if (me == null) return const [];
-  final seen = ref.watch(seenStoriesProvider);
-  final items = ref.watch(feedProvider).valueOrNull ?? const [];
-
-  final cutoff = DateTime.now().subtract(const Duration(days: 7));
-  final newest = <int, Post>{};
-  for (final item in items.whereType<PostFeedItem>()) {
-    final post = item.post;
-    if (post.userId == me || post.author == null) continue;
-    final at = post.createdAt;
-    if (at == null || at.isBefore(cutoff)) continue;
-    final existing = newest[post.userId];
-    if (existing == null || (existing.createdAt?.isBefore(at) ?? true)) {
-      newest[post.userId] = post;
-    }
+  final groups = ref.watch(storiesProvider).valueOrNull ?? const [];
+  for (final g in groups) {
+    if (g.user.id == me) return g;
   }
-
-  final entries = [
-    for (final post in newest.values)
-      StoryEntry(
-        author: post.author!,
-        latest: post,
-        seen: seen.contains(post.id),
-      ),
-  ]..sort((a, b) {
-    if (a.seen != b.seen) return a.seen ? 1 : -1;
-    return (b.latest.createdAt ?? DateTime(0)).compareTo(
-      a.latest.createdAt ?? DateTime(0),
-    );
-  });
-
-  return entries.take(15).toList();
+  return null;
 });

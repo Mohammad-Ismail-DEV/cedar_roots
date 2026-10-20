@@ -12,10 +12,14 @@ import '../shell/app_routes.dart';
 import 'feed_provider.dart';
 import 'saved_posts.dart';
 import 'stories.dart';
+import 'story_create_screen.dart';
 import 'story_viewer_screen.dart';
+import '../../models/post.dart';
+import '../../models/story.dart';
 import 'widgets/comment_sheet.dart';
 import 'widgets/post_card.dart';
 import 'widgets/post_menu.dart';
+import 'widgets/share_sheet.dart';
 import 'widgets/stories_row.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -84,19 +88,35 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
   }
 
-  void _save(int postId) {
-    if (!_requireLogin('save posts')) return;
-    ref.read(savedPostsProvider.notifier).toggle(postId);
+  void _share(Post post) {
+    if (!_requireLogin('share posts')) return;
+    showShareSheet(context, post);
   }
 
-  void _openStory(List<StoryEntry> entries, int index) {
+  Future<void> _save(int postId) async {
+    if (!_requireLogin('save posts')) return;
+    try {
+      await ref.read(savedPostsProvider.notifier).toggle(postId);
+    } catch (e) {
+      if (mounted) showErrorSnack(context, e);
+    }
+  }
+
+  void _createStory() {
+    Navigator.push(
+      context,
+      MaterialPageRoute<void>(builder: (_) => const StoryCreateScreen()),
+    );
+  }
+
+  void _openStory(List<StoryGroup> groups, int index) {
     Navigator.push(
       context,
       PageRouteBuilder<void>(
         opaque: true,
         pageBuilder:
             (_, __, ___) =>
-                StoryViewerScreen(entries: entries, initialIndex: index),
+                StoryViewerScreen(groups: groups, initialGroup: index),
         transitionsBuilder:
             (_, animation, __, child) =>
                 FadeTransition(opacity: animation, child: child),
@@ -128,7 +148,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final loggedIn = me != null;
     final feed = ref.watch(feedProvider);
     final saved = ref.watch(savedPostsProvider);
-    final stories = ref.watch(storiesProvider);
+    final stories =
+        ref.watch(storiesProvider).valueOrNull ?? const <StoryGroup>[];
     final myUser =
         loggedIn ? ref.watch(profileProvider(me)).valueOrNull?.user : null;
 
@@ -187,8 +208,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         data: (items) {
           final posts = items.whereType<PostFeedItem>().map((i) => i.post);
           final unseen = {
-            for (final s in stories)
-              if (!s.seen) s.author.id,
+            for (final g in stories)
+              if (!g.allSeen && g.user.id != me) g.user.id,
           };
 
           return RefreshIndicator(
@@ -199,9 +220,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 if (loggedIn) ...[
                   StoriesRow(
                     me: myUser,
-                    entries: stories,
-                    onYourStory:
-                        () => Navigator.push(context, AppRoutes.createPost()),
+                    groups: stories,
+                    myUserId: me,
+                    onCreate: _createStory,
                     onOpen: (i) => _openStory(stories, i),
                   ),
                   const Divider(),
@@ -229,6 +250,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         () => Navigator.push(context, AppRoutes.post(post.id)),
                     onLike: () => _like(post.id),
                     onComment: () => _comment(post.id),
+                    onShare: () => _share(post),
                     onSave: () => _save(post.id),
                     onMenu:
                         () => showPostMenu(

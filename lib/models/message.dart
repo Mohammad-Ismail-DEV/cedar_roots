@@ -40,6 +40,10 @@ class Message {
 
   bool get isImage => type == 'image';
 
+  /// A post someone shared in chat: [content] is the post's id.
+  bool get isPost => type == 'post';
+  int? get sharedPostId => isPost ? int.tryParse(content) : null;
+
   /// An image that has not been uploaded yet: [content] is a path on this device.
   bool get isLocal => isImage && !content.startsWith('http');
   bool isMine(int myId) => senderId == myId;

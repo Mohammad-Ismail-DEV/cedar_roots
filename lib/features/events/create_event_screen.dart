@@ -5,6 +5,8 @@ import 'package:intl/intl.dart';
 import '../../core/ui.dart';
 import '../../data/event_repository.dart';
 import '../../shared/widgets/shadow_button.dart';
+import '../../core/session.dart';
+import '../connections/connections_provider.dart';
 import '../feed/feed_provider.dart';
 import '../../core/theme.dart';
 
@@ -23,6 +25,7 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
   final _description = TextEditingController();
   final _location = TextEditingController();
   DateTime? _dateTime;
+  final _collaborators = <int>{};
   bool _submitting = false;
 
   @override
@@ -75,6 +78,7 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
             location: _location.text.trim(),
             dateTime: _dateTime!,
             organizationId: widget.organizationId,
+            collaborators: _collaborators.toList(),
           );
       ref.invalidate(feedProvider);
       if (mounted) Navigator.pop(context, true);
@@ -92,6 +96,52 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
       borderSide: BorderSide(color: context.palette.muted, width: 1),
     ),
   );
+
+  Widget _collaboratorPicker() {
+    final me = ref.watch(currentUserIdProvider);
+    final connections =
+        me == null ? null : ref.watch(connectionsProvider(me)).valueOrNull;
+    final people = [
+      for (final c in connections?.accepted ?? const [])
+        if (c.other(me!) case final user?) user,
+    ];
+    if (people.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Invite collaborators',
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'They are invited to help run this event.',
+          style: TextStyle(color: context.palette.muted, fontSize: 12),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 4,
+          children: [
+            for (final user in people)
+              FilterChip(
+                label: Text(user.name),
+                selected: _collaborators.contains(user.id),
+                onSelected:
+                    (on) => setState(() {
+                      if (on) {
+                        _collaborators.add(user.id);
+                      } else {
+                        _collaborators.remove(user.id);
+                      }
+                    }),
+              ),
+          ],
+        ),
+      ],
+    );
+  }
 
   String? _required(String? value, String field) =>
       (value == null || value.trim().isEmpty) ? '$field is required' : null;
@@ -138,6 +188,8 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
                 ),
                 onTap: _pickDateTime,
               ),
+              const SizedBox(height: 8),
+              _collaboratorPicker(),
               const SizedBox(height: 24),
               _submitting
                   ? const CircularProgressIndicator()

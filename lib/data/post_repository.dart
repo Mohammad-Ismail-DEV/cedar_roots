@@ -63,6 +63,23 @@ class PostRepository {
     return asMap(data)?['liked'] == true;
   }
 
+  // ---- saved posts (kept on the server so they follow you between devices)
+
+  /// Ids of the posts I saved, newest first.
+  Future<List<int>> savedIds() async {
+    final data = await _api.get('/posts/saved/ids');
+    return data is List ? [for (final id in data) asInt(id)] : const [];
+  }
+
+  Future<List<Post>> savedPosts() async {
+    final data = await _api.get('/posts/saved');
+    return asMapList(data).map(Post.fromJson).toList();
+  }
+
+  /// Returns true when the post is now saved.
+  Future<bool> toggleSave(int postId) async =>
+      asMap(await _api.post('/posts/$postId/save'))?['saved'] == true;
+
   Future<void> addComment(int postId, String content) =>
       _api.post('/comments', body: {'post_id': postId, 'content': content});
 

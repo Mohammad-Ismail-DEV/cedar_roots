@@ -19,6 +19,7 @@ class PostCard extends StatefulWidget {
     required this.onViewPhoto,
     required this.onLike,
     required this.onComment,
+    required this.onShare,
     required this.onMenu,
     required this.onSave,
     required this.saved,
@@ -34,6 +35,7 @@ class PostCard extends StatefulWidget {
   final VoidCallback onViewPhoto;
   final VoidCallback onLike;
   final VoidCallback onComment;
+  final VoidCallback onShare;
   final VoidCallback onMenu;
   final VoidCallback onSave;
   final bool saved;
@@ -175,6 +177,11 @@ class _PostCardState extends State<PostCard>
                   tooltip: 'Comments',
                   onPressed: widget.onComment,
                   icon: const Icon(Icons.mode_comment_outlined, size: 24),
+                ),
+                IconButton(
+                  tooltip: 'Share',
+                  onPressed: widget.onShare,
+                  icon: const Icon(Icons.send_outlined, size: 24),
                 ),
                 const Spacer(),
                 IconButton(

@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/theme.dart';
 import '../../../models/message.dart';
 import '../../../shared/widgets/message_status_icon.dart';
 import '../../../shared/widgets/user_avatar.dart';
+import '../presence_provider.dart';
 
-class ChatListTile extends StatelessWidget {
+class ChatListTile extends ConsumerWidget {
   const ChatListTile({
     super.key,
     required this.conversation,
@@ -19,15 +21,20 @@ class ChatListTile extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final palette = context.palette;
+    final online = ref.watch(presenceProvider(conversation.userId)).online;
     final last = conversation.lastMessage;
     final sentByMe = last != null && last.senderId == myUserId;
     final unread = conversation.unreadCount > 0;
     final preview =
         last == null
             ? ''
-            : '${sentByMe ? 'You: ' : ''}${last.isImage ? 'Photo' : last.content}';
+            : '${sentByMe ? 'You: ' : ''}${last.isImage
+                ? 'Photo'
+                : last.isPost
+                ? 'Shared a post'
+                : last.content}';
     final time = last == null ? '' : DateFormat.jm().format(last.sentAt);
 
     return InkWell(
@@ -36,11 +43,32 @@ class ChatListTile extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: Row(
           children: [
-            UserAvatar(
-              name: conversation.name,
-              imageUrl: conversation.profilePic,
-              radius: 28,
-              backgroundColor: palette.avatarBg,
+            Stack(
+              children: [
+                UserAvatar(
+                  name: conversation.name,
+                  imageUrl: conversation.profilePic,
+                  radius: 28,
+                  backgroundColor: palette.avatarBg,
+                ),
+                if (online)
+                  Positioned(
+                    right: 0,
+                    bottom: 0,
+                    child: Container(
+                      width: 14,
+                      height: 14,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF31A24C),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Theme.of(context).scaffoldBackgroundColor,
+                          width: 2,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ),
             const SizedBox(width: 12),
             Expanded(

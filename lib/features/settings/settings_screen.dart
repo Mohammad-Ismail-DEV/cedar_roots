@@ -7,10 +7,23 @@ import '../../core/theme_mode.dart';
 import '../../core/ui.dart';
 import '../../data/auth_repository.dart';
 import '../../data/user_repository.dart';
+import '../../models/preferences.dart';
 import '../auth/login_screen.dart';
+import 'preferences_provider.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
+
+  Future<void> _run(
+    BuildContext context,
+    Future<void> Function() action,
+  ) async {
+    try {
+      await action();
+    } catch (e) {
+      if (context.mounted) showErrorSnack(context, e);
+    }
+  }
 
   Future<void> _signOut(BuildContext context, WidgetRef ref) async {
     await ref.read(authRepositoryProvider).logout();
@@ -59,6 +72,8 @@ class SettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final palette = context.palette;
     final mode = ref.watch(themeModeProvider);
+    final prefs = ref.watch(preferencesProvider);
+    final notifications = prefs.valueOrNull ?? const NotificationPreferences();
 
     Widget heading(String text) => Padding(
       padding: const EdgeInsets.fromLTRB(16, 18, 16, 6),
@@ -84,6 +99,43 @@ class SettingsScreen extends ConsumerWidget {
             ),
             minTileHeight: 52,
             onTap: () => _deleteAccount(context, ref),
+          ),
+          heading('Notifications'),
+          SwitchListTile(
+            secondary: const Icon(Icons.notifications_outlined),
+            title: const Text('Push notifications'),
+            subtitle: Text(
+              'Likes, comments, messages and requests',
+              style: TextStyle(color: palette.muted),
+            ),
+            value: notifications.pushEnabled,
+            onChanged:
+                prefs.isLoading
+                    ? null
+                    : (on) => _run(
+                      context,
+                      () => ref
+                          .read(preferencesProvider.notifier)
+                          .setPushEnabled(on),
+                    ),
+          ),
+          SwitchListTile(
+            secondary: const Icon(Icons.event_available_outlined),
+            title: const Text('Event reminders'),
+            subtitle: Text(
+              'A reminder the day before events you joined',
+              style: TextStyle(color: palette.muted),
+            ),
+            value: notifications.eventReminders,
+            onChanged:
+                prefs.isLoading
+                    ? null
+                    : (on) => _run(
+                      context,
+                      () => ref
+                          .read(preferencesProvider.notifier)
+                          .setEventReminders(on),
+                    ),
           ),
           heading('Preferences'),
           SwitchListTile(

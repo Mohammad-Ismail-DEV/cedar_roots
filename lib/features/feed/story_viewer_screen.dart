@@ -3,23 +3,29 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/image_url.dart';
+import '../../core/session.dart';
+import '../../core/theme.dart';
 import '../../core/time_label.dart';
+import '../../core/ui.dart';
+import '../../data/story_repository.dart';
+import '../../models/story.dart';
 import '../../shared/widgets/post_media.dart';
 import '../../shared/widgets/user_avatar.dart';
 import '../shell/app_routes.dart';
 import 'stories.dart';
 
-/// Full-screen view of someone's newest post. Advances on its own after a few seconds,
-/// tap the right or left side to skip, hold to pause.
+/// Full-screen stories. Plays each person's stories in turn, five seconds each: tap the right
+/// side to skip ahead, the left to go back, hold to pause, swipe down to close.
+/// On your own story you can see who watched it and delete it.
 class StoryViewerScreen extends ConsumerStatefulWidget {
   const StoryViewerScreen({
     super.key,
-    required this.entries,
-    required this.initialIndex,
+    required this.groups,
+    required this.initialGroup,
   });
 
-  final List<StoryEntry> entries;
-  final int initialIndex;
+  final List<StoryGroup> groups;
+  final int initialGroup;
 
   @override
   ConsumerState<StoryViewerScreen> createState() => _StoryViewerScreenState();
@@ -36,9 +42,12 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
     if (status == AnimationStatus.completed) _next();
   });
 
-  late int _index = widget.initialIndex;
+  late int _group = widget.initialGroup;
+  late int _index = widget.groups[widget.initialGroup].firstUnseenIndex;
 
-  StoryEntry get _entry => widget.entries[_index];
+  StoryGroup get _current => widget.groups[_group];
+  Story get _story => _current.stories[_index];
+  bool get _isMine => _current.user.id == ref.read(currentUserIdProvider);
 
   @override
   void initState() {
@@ -53,46 +62,138 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
   }
 
   void _start() {
+    final userId = _current.user.id;
+    final storyId = _story.id;
     // Provider state may not change while the widget tree is building.
     Future.microtask(() {
       if (mounted) {
-        ref.read(seenStoriesProvider.notifier).mark(_entry.latest.id);
+        ref.read(storiesProvider.notifier).markViewed(userId, storyId);
       }
     });
     _progress.forward(from: 0);
   }
 
+  void _close() => Navigator.of(context).maybePop();
+
   void _next() {
-    if (_index >= widget.entries.length - 1) {
-      Navigator.of(context).maybePop();
+    if (_index < _current.stories.length - 1) {
+      setState(() => _index++);
+    } else if (_group < widget.groups.length - 1) {
+      setState(() {
+        _group++;
+        _index = _current.firstUnseenIndex;
+      });
+    } else {
+      _close();
       return;
     }
-    setState(() => _index++);
     _start();
   }
 
   void _previous() {
-    if (_index == 0) {
-      _progress.forward(from: 0);
-      return;
+    if (_index > 0) {
+      setState(() => _index--);
+    } else if (_group > 0) {
+      setState(() {
+        _group--;
+        _index = 0;
+      });
     }
-    setState(() => _index--);
     _start();
   }
 
   void _message() {
-    final author = _entry.author;
+    final user = _current.user;
     final navigator = Navigator.of(context);
     navigator.pop();
-    navigator.push(AppRoutes.chat(userId: author.id, name: author.name));
+    navigator.push(AppRoutes.chat(userId: user.id, name: user.name));
+  }
+
+  Future<void> _showViewers() async {
+    _progress.stop();
+    final story = _story;
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => _ViewersSheet(storyId: story.id),
+    );
+    if (mounted) _progress.forward();
+  }
+
+  Future<void> _delete() async {
+    _progress.stop();
+    final story = _story;
+    final confirmed = await confirm(
+      context,
+      title: 'Delete story',
+      message: 'This removes the story for everyone.',
+      confirmLabel: 'Delete',
+      destructive: true,
+    );
+    if (!mounted) return;
+    if (!confirmed) {
+      _progress.forward();
+      return;
+    }
+    try {
+      await ref.read(storiesProvider.notifier).delete(story.id);
+      if (mounted) _close();
+    } catch (e) {
+      if (!mounted) return;
+      showErrorSnack(context, e);
+      _progress.forward();
+    }
+  }
+
+  Widget _content(Story story) {
+    final width = MediaQuery.sizeOf(context).width;
+    if (story.isImage && story.imageUrl != null) {
+      return Center(
+        child: CachedNetworkImage(
+          httpHeaders: imageHeaders,
+          imageUrl: sizedImageUrl(
+            story.imageUrl!,
+            logicalWidth: width,
+            pixelRatio: MediaQuery.devicePixelRatioOf(context),
+          ),
+          fit: BoxFit.contain,
+          placeholder:
+              (_, __) => const Center(
+                child: CircularProgressIndicator(color: Colors.white),
+              ),
+          errorWidget:
+              (_, __, ___) => const Icon(
+                Icons.broken_image,
+                color: Colors.white54,
+                size: 48,
+              ),
+        ),
+      );
+    }
+    return DecoratedBox(
+      decoration: BoxDecoration(gradient: textGradientFor(story.bg)),
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Center(
+          child: Text(
+            story.text ?? '',
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 28,
+              height: 1.3,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final entry = _entry;
-    final post = entry.latest;
-    final hasPhoto = post.imageUrl != null && post.imageUrl!.isNotEmpty;
-    final pixelRatio = MediaQuery.devicePixelRatioOf(context);
+    final user = _current.user;
+    final story = _story;
     final width = MediaQuery.sizeOf(context).width;
 
     return Scaffold(
@@ -101,6 +202,9 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
         behavior: HitTestBehavior.opaque,
         onLongPressStart: (_) => _progress.stop(),
         onLongPressEnd: (_) => _progress.forward(),
+        onVerticalDragEnd: (details) {
+          if ((details.primaryVelocity ?? 0) > 300) _close();
+        },
         onTapUp: (details) {
           if (details.localPosition.dx < width / 3) {
             _previous();
@@ -111,65 +215,40 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
         child: Stack(
           fit: StackFit.expand,
           children: [
-            if (hasPhoto)
-              Center(
-                child: CachedNetworkImage(
-                  httpHeaders: imageHeaders,
-                  imageUrl: sizedImageUrl(
-                    post.imageUrl!,
-                    logicalWidth: width,
-                    pixelRatio: pixelRatio,
-                  ),
-                  fit: BoxFit.contain,
-                  placeholder:
-                      (_, __) => const Center(
-                        child: CircularProgressIndicator(color: Colors.white),
-                      ),
-                  errorWidget:
-                      (_, __, ___) => const Icon(
-                        Icons.broken_image,
-                        color: Colors.white54,
-                        size: 48,
-                      ),
-                ),
-              )
-            else
-              DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: textGradientFor(post.userId),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(32),
-                  child: Center(
-                    child: Text(
-                      post.content,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 26,
-                        height: 1.3,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
+            _content(story),
             SafeArea(
               child: Column(
                 children: [
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+                    padding: const EdgeInsets.fromLTRB(10, 8, 10, 0),
                     child: AnimatedBuilder(
                       animation: _progress,
                       builder:
-                          (_, __) => ClipRRect(
-                            borderRadius: BorderRadius.circular(2),
-                            child: LinearProgressIndicator(
-                              value: _progress.value,
-                              minHeight: 3,
-                              backgroundColor: Colors.white30,
-                              color: Colors.white,
-                            ),
+                          (_, __) => Row(
+                            children: [
+                              for (var i = 0; i < _current.stories.length; i++)
+                                Expanded(
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 2,
+                                    ),
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(2),
+                                      child: LinearProgressIndicator(
+                                        value:
+                                            i < _index
+                                                ? 1
+                                                : i == _index
+                                                ? _progress.value
+                                                : 0,
+                                        minHeight: 3,
+                                        backgroundColor: Colors.white30,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
                           ),
                     ),
                   ),
@@ -178,9 +257,9 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
                     child: Row(
                       children: [
                         UserAvatar(
-                          name: entry.author.name,
-                          imageUrl: entry.author.profilePic,
-                          blob: entry.author.profilePicBlob,
+                          name: user.name,
+                          imageUrl: user.profilePic,
+                          blob: user.profilePicBlob,
                           radius: 16,
                           backgroundColor: Colors.white24,
                         ),
@@ -190,13 +269,13 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
                             TextSpan(
                               children: [
                                 TextSpan(
-                                  text: entry.author.name,
+                                  text: _isMine ? 'Your story' : user.name,
                                   style: const TextStyle(
                                     fontWeight: FontWeight.w700,
                                   ),
                                 ),
                                 TextSpan(
-                                  text: '  ${shortAgo(post.createdAt)}',
+                                  text: '  ${shortAgo(story.createdAt)}',
                                   style: const TextStyle(color: Colors.white70),
                                 ),
                               ],
@@ -208,45 +287,68 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
                             ),
                           ),
                         ),
+                        if (_isMine)
+                          IconButton(
+                            tooltip: 'Delete story',
+                            color: Colors.white,
+                            onPressed: _delete,
+                            icon: const Icon(Icons.delete_outline),
+                          ),
                         IconButton(
                           tooltip: 'Close',
                           color: Colors.white,
-                          onPressed: () => Navigator.of(context).maybePop(),
+                          onPressed: _close,
                           icon: const Icon(Icons.close),
                         ),
                       ],
                     ),
                   ),
                   const Spacer(),
-                  if (hasPhoto && post.content.isNotEmpty)
+                  if (story.isImage && (story.text?.isNotEmpty ?? false))
                     Container(
                       width: double.infinity,
                       color: Colors.black38,
                       padding: const EdgeInsets.all(14),
                       child: Text(
-                        post.content,
-                        maxLines: 3,
-                        overflow: TextOverflow.ellipsis,
+                        story.text!,
                         style: const TextStyle(color: Colors.white),
                       ),
                     ),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
-                    child: SizedBox(
-                      width: double.infinity,
-                      height: 46,
-                      child: OutlinedButton(
-                        onPressed: _message,
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.white,
-                          side: const BorderSide(color: Colors.white70),
-                          shape: const StadiumBorder(),
-                          alignment: Alignment.centerLeft,
-                          padding: const EdgeInsets.symmetric(horizontal: 18),
-                        ),
-                        child: const Text('Send message'),
-                      ),
-                    ),
+                    child:
+                        _isMine
+                            ? Align(
+                              alignment: Alignment.centerLeft,
+                              child: TextButton.icon(
+                                onPressed: _showViewers,
+                                style: TextButton.styleFrom(
+                                  foregroundColor: Colors.white,
+                                ),
+                                icon: const Icon(Icons.visibility_outlined),
+                                label: Text(
+                                  '${story.viewCount ?? 0} '
+                                  '${story.viewCount == 1 ? 'viewer' : 'viewers'}',
+                                ),
+                              ),
+                            )
+                            : SizedBox(
+                              width: double.infinity,
+                              height: 46,
+                              child: OutlinedButton(
+                                onPressed: _message,
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: Colors.white,
+                                  side: const BorderSide(color: Colors.white70),
+                                  shape: const StadiumBorder(),
+                                  alignment: Alignment.centerLeft,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 18,
+                                  ),
+                                ),
+                                child: const Text('Send message'),
+                              ),
+                            ),
                   ),
                 ],
               ),
@@ -254,6 +356,85 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
           ],
         ),
       ),
+    );
+  }
+}
+
+final _storyViewersProvider = FutureProvider.autoDispose
+    .family<List<StoryViewer>, int>(
+      (ref, storyId) => ref.read(storyRepositoryProvider).viewers(storyId),
+    );
+
+class _ViewersSheet extends ConsumerWidget {
+  const _ViewersSheet({required this.storyId});
+
+  final int storyId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final palette = context.palette;
+    final viewers = ref.watch(_storyViewersProvider(storyId));
+
+    return DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: 0.5,
+      builder:
+          (_, controller) => Column(
+            children: [
+              const Padding(
+                padding: EdgeInsets.only(bottom: 8),
+                child: Text(
+                  'Viewers',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                ),
+              ),
+              const Divider(),
+              Expanded(
+                child: viewers.when(
+                  loading:
+                      () => const Center(child: CircularProgressIndicator()),
+                  error: (e, _) => Center(child: Text(errorMessage(e))),
+                  data:
+                      (list) =>
+                          list.isEmpty
+                              ? Center(
+                                child: Text(
+                                  'No one has viewed this yet.',
+                                  style: TextStyle(color: palette.muted),
+                                ),
+                              )
+                              : ListView.builder(
+                                controller: controller,
+                                itemCount: list.length,
+                                itemBuilder: (context, i) {
+                                  final v = list[i];
+                                  return ListTile(
+                                    leading: UserAvatar(
+                                      name: v.user.name,
+                                      imageUrl: v.user.profilePic,
+                                      blob: v.user.profilePicBlob,
+                                      radius: 20,
+                                      backgroundColor: palette.avatarBg,
+                                    ),
+                                    title: Text(v.user.name),
+                                    trailing: Text(
+                                      shortAgo(v.viewedAt),
+                                      style: TextStyle(color: palette.muted),
+                                    ),
+                                    onTap: () {
+                                      Navigator.pop(context);
+                                      Navigator.push(
+                                        context,
+                                        AppRoutes.profile(v.user.id),
+                                      );
+                                    },
+                                  );
+                                },
+                              ),
+                ),
+              ),
+            ],
+          ),
     );
   }
 }

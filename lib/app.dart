@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'core/deep_links.dart';
 import 'core/navigation.dart';
 import 'core/providers.dart';
 import 'core/theme.dart';
@@ -22,6 +23,7 @@ class CedarRootsApp extends ConsumerWidget {
     ref.watch(deliveryReceiptsProvider);
     ref.watch(livePostUpdatesProvider);
     ref.watch(feedPollerProvider);
+    ref.watch(deepLinksProvider);
 
     return MaterialApp(
       navigatorObservers: [routeObserver],

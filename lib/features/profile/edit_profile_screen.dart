@@ -6,6 +6,8 @@ import '../../core/theme.dart';
 import '../../core/ui.dart';
 import '../../data/user_repository.dart';
 import '../../shared/widgets/user_avatar.dart';
+import '../settings/change_email_screen.dart';
+import '../settings/change_password_screen.dart';
 import 'profile_actions.dart';
 import 'profile_provider.dart';
 
@@ -57,6 +59,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             bio: _bio.text.trim(),
             location: _location.text.trim(),
           );
+      await ref.read(sessionProvider.notifier).updateProfile(name: name);
       ref.invalidate(profileProvider(me));
       if (!mounted) return;
       Navigator.pop(context);
@@ -133,9 +136,32 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 decoration: const InputDecoration(counterText: ''),
               ),
               const SizedBox(height: 12),
-              Text(
-                'Your email and password are managed in account settings.',
-                style: TextStyle(color: palette.muted, fontSize: 12),
+              const SizedBox(height: 8),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.alternate_email),
+                title: const Text('Change email'),
+                trailing: Icon(Icons.chevron_right, color: palette.muted),
+                onTap:
+                    () => Navigator.push(
+                      context,
+                      MaterialPageRoute<void>(
+                        builder: (_) => const ChangeEmailScreen(),
+                      ),
+                    ),
+              ),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.lock_outline),
+                title: const Text('Change password'),
+                trailing: Icon(Icons.chevron_right, color: palette.muted),
+                onTap:
+                    () => Navigator.push(
+                      context,
+                      MaterialPageRoute<void>(
+                        builder: (_) => const ChangePasswordScreen(),
+                      ),
+                    ),
               ),
             ],
           );

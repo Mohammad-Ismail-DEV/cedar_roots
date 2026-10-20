@@ -159,6 +159,29 @@ class ChatRepository {
     'local_id': localId,
   });
 
+  /// Sends a post to someone as a chat message and waits until the server has stored it.
+  Future<void> sendPost({required int receiverId, required int postId}) async {
+    await _socket.whenConnected();
+    final localId = DateTime.now().microsecondsSinceEpoch;
+    try {
+      await _socket.request(
+        'send_message',
+        {
+          'receiverId': receiverId,
+          'content': '$postId',
+          'type': 'post',
+          'local_id': localId,
+        },
+        responseEvent: 'message_saved',
+        errorEvent: 'message_failed',
+      );
+    } on SocketRequestException catch (e) {
+      // The failure event arrives as "{local_id: 1, error: Post not found}".
+      final reason = RegExp(r'error: (.*)\}$').firstMatch(e.message)?.group(1);
+      throw SocketRequestException(reason ?? 'Could not send the post');
+    }
+  }
+
   void acknowledgeDelivery(int messageId) =>
       _socket.emit('message_received', {'messageId': messageId});
 

@@ -9,6 +9,7 @@ import '../../../core/image_url.dart';
 import '../../../core/theme.dart';
 import '../../../models/message.dart';
 import '../../../shared/widgets/message_status_icon.dart';
+import 'shared_post_card.dart';
 
 class ChatMessageBubble extends StatelessWidget {
   const ChatMessageBubble({
@@ -54,7 +55,9 @@ class ChatMessageBubble extends StatelessWidget {
     );
 
     final Widget bubble;
-    if (message.isImage) {
+    if (message.isPost && message.sharedPostId != null) {
+      bubble = SharedPostCard(postId: message.sharedPostId!, footer: footer);
+    } else if (message.isImage) {
       bubble = GestureDetector(
         onTap: onImageTap,
         child: Stack(
@@ -131,15 +134,17 @@ class ChatMessageBubble extends StatelessWidget {
         child: Container(
           margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 10),
           padding:
-              message.isImage
+              message.isImage || message.isPost
                   ? EdgeInsets.zero
                   : const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
           decoration: BoxDecoration(
             color:
-                message.isImage
+                message.isImage || message.isPost
                     ? Colors.transparent
                     : (isMe ? scheme.primary : palette.inputBg),
-            borderRadius: BorderRadius.circular(message.isImage ? 16 : 20),
+            borderRadius: BorderRadius.circular(
+              message.isImage || message.isPost ? 16 : 20,
+            ),
           ),
           constraints: BoxConstraints(
             maxWidth: MediaQuery.of(context).size.width * 0.8,

@@ -13,6 +13,7 @@ import '../feed/feed_provider.dart';
 import '../feed/likes_line.dart';
 import '../feed/saved_posts.dart';
 import '../feed/widgets/post_menu.dart';
+import '../feed/widgets/share_sheet.dart';
 import '../profile/profile_provider.dart';
 import '../shell/app_routes.dart';
 import '../feed/post_details_provider.dart';
@@ -50,6 +51,15 @@ class _PostDetailsScreenState extends ConsumerState<PostDetailsScreen> {
     if (!_requireLogin('like')) return;
     try {
       await _notifier.toggleLike();
+    } catch (e) {
+      if (mounted) showErrorSnack(context, e);
+    }
+  }
+
+  Future<void> _toggleSave(int postId) async {
+    if (!_requireLogin('save posts')) return;
+    try {
+      await ref.read(savedPostsProvider.notifier).toggle(postId);
     } catch (e) {
       if (mounted) showErrorSnack(context, e);
     }
@@ -253,13 +263,19 @@ class _PostDetailsScreenState extends ConsumerState<PostDetailsScreen> {
                               size: 26,
                             ),
                           ),
+                          IconButton(
+                            tooltip: 'Share',
+                            onPressed: () {
+                              if (_requireLogin('share posts')) {
+                                showShareSheet(context, post);
+                              }
+                            },
+                            icon: const Icon(Icons.send_outlined, size: 24),
+                          ),
                           const Spacer(),
                           IconButton(
                             tooltip: saved ? 'Remove from saved' : 'Save',
-                            onPressed:
-                                () => ref
-                                    .read(savedPostsProvider.notifier)
-                                    .toggle(post.id),
+                            onPressed: () => _toggleSave(post.id),
                             icon: Icon(
                               saved ? Icons.bookmark : Icons.bookmark_border,
                               size: 26,
