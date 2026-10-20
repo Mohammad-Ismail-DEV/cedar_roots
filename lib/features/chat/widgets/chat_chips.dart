@@ -72,9 +72,12 @@ class ScrollToBottomButton extends StatelessWidget {
         alignment: Alignment.topRight,
         children: [
           FloatingActionButton.small(
-            backgroundColor: Theme.of(context).colorScheme.primary,
-            foregroundColor: Colors.white,
-            elevation: 2,
+            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+            foregroundColor: Theme.of(context).colorScheme.onSurface,
+            elevation: 3,
+            shape: CircleBorder(
+              side: BorderSide(color: context.palette.border),
+            ),
             onPressed: onPressed,
             child: const Icon(Icons.arrow_downward),
           ),
