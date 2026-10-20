@@ -52,6 +52,7 @@ dependencies:
   http_parser: ^4.1.2
   gal: ^2.3.3
   cached_network_image: ^3.4.0
+  google_fonts: ^6.2.1
 
 dev_dependencies:
   flutter_test:

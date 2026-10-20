@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/navigation.dart';
 import 'core/providers.dart';
+import 'core/theme.dart';
+import 'core/theme_mode.dart';
 import 'features/chat/delivery_receipts.dart';
 import 'features/feed/feed_poller.dart';
 import 'features/feed/live_post_updates.dart';
@@ -26,9 +28,9 @@ class CedarRootsApp extends ConsumerWidget {
       navigatorKey: navigatorKey,
       title: 'Cedar Roots',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.lightBlue),
-      ),
+      theme: buildTheme(Brightness.light),
+      darkTheme: buildTheme(Brightness.dark),
+      themeMode: ref.watch(themeModeProvider),
       home: const NavBar(),
     );
   }
