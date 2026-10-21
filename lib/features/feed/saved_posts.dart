@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/session.dart';
@@ -18,7 +20,8 @@ class SavedPostsNotifier extends Notifier<Set<int>> {
     final me = ref.watch(currentUserIdProvider);
     if (me == null) return const {};
     Future.microtask(_load);
-    return const {};
+    // Bookmarks show straight away from the last known list while the server answers.
+    return (_repo.cachedSavedIds() ?? const <int>[]).toSet();
   }
 
   Future<void> _load() async {
@@ -45,6 +48,7 @@ class SavedPostsNotifier extends Notifier<Set<int>> {
       if (saved != state.contains(postId)) {
         state = saved ? {...state, postId} : ({...state}..remove(postId));
       }
+      unawaited(_repo.cacheSavedIds(state));
       ref.invalidate(savedPostObjectsProvider);
     } catch (_) {
       state = before;
@@ -53,8 +57,21 @@ class SavedPostsNotifier extends Notifier<Set<int>> {
   }
 }
 
-/// The bookmarked posts themselves, newest bookmark first.
-final savedPostObjectsProvider = FutureProvider.autoDispose<List<Post>>((ref) {
+/// The bookmarked posts themselves, newest bookmark first. Shows the last known list at once,
+/// then the fresh one; if the refresh fails the old list stays.
+final savedPostObjectsProvider = StreamProvider.autoDispose<List<Post>>((
+  ref,
+) async* {
   ref.watch(currentUserIdProvider);
-  return ref.read(postRepositoryProvider).savedPosts();
+  final repo = ref.read(postRepositoryProvider);
+
+  final cached = repo.cachedSavedPosts();
+  if (cached != null) {
+    yield cached;
+    try {
+      yield await repo.savedPosts();
+    } catch (_) {}
+    return;
+  }
+  yield await repo.savedPosts();
 });

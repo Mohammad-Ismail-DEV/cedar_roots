@@ -5,6 +5,7 @@ import 'package:cedar_roots/data/story_repository.dart';
 import 'package:cedar_roots/features/feed/saved_posts.dart';
 import 'package:cedar_roots/features/feed/stories.dart';
 import 'package:cedar_roots/models/message.dart';
+import 'package:cedar_roots/models/post.dart';
 import 'package:cedar_roots/models/preferences.dart';
 import 'package:cedar_roots/models/presence.dart';
 import 'package:cedar_roots/models/story.dart';
@@ -32,11 +33,31 @@ Map<String, dynamic> groupJson(
 };
 
 class _FakePosts extends Fake implements PostRepository {
-  _FakePosts({this.saved = const [], this.failToggle = false});
+  _FakePosts({
+    this.saved = const [],
+    this.failToggle = false,
+    this.cachedSaved,
+  });
+
+  final List<int>? cachedSaved;
+  List<int>? cachedWritten;
 
   List<int> saved;
   bool failToggle;
   final toggled = <int>[];
+
+  @override
+  List<Post>? cachedSavedPosts() => null;
+
+  @override
+  Future<List<Post>> savedPosts() async => const [];
+
+  @override
+  List<int>? cachedSavedIds() => cachedSaved;
+
+  @override
+  Future<void> cacheSavedIds(Iterable<int> ids) async =>
+      cachedWritten = ids.toList();
 
   @override
   Future<List<int>> savedIds() async => saved;
@@ -242,6 +263,22 @@ void main() {
         expect(c.read(savedPostsProvider), {5});
       },
     );
+
+    test('shows the last known bookmarks before the server answers', () async {
+      final posts = _FakePosts(saved: [5, 6], cachedSaved: [5]);
+      final c = await container([
+        postRepositoryProvider.overrideWithValue(posts),
+      ]);
+
+      c.listen(savedPostsProvider, (_, __) {});
+      expect(c.read(savedPostsProvider), {5});
+
+      await Future<void>.delayed(Duration.zero);
+      expect(c.read(savedPostsProvider), {5, 6});
+
+      await c.read(savedPostsProvider.notifier).toggle(9);
+      expect(posts.cachedWritten, containsAll([5, 6, 9]));
+    });
 
     test('puts the bookmark back when the server refuses', () async {
       final posts = _FakePosts(saved: [5], failToggle: true);
