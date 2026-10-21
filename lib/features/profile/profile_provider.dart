@@ -175,3 +175,7 @@ class ProfileNotifier extends AutoDisposeFamilyAsyncNotifier<ProfileData, int> {
     );
   }
 }
+
+/// Whether my own profile is showing Saved instead of Posts. The tab bar reads it so a sideways
+/// swipe on Saved goes back to Posts before it is allowed to change tabs.
+final savedTabProvider = StateProvider<bool>((ref) => false);

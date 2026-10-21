@@ -117,6 +117,11 @@ class _NavBarState extends ConsumerState<NavBar> {
       child: Scaffold(
         body: PageView(
           controller: _pages,
+          // On my Saved tab a sideways swipe goes back to Posts, not to another tab.
+          physics:
+              _tab == 3 && ref.watch(savedTabProvider)
+                  ? const NeverScrollableScrollPhysics()
+                  : null,
           onPageChanged: (index) {
             FocusManager.instance.primaryFocus?.unfocus();
             setState(() => _tab = index);
