@@ -65,15 +65,40 @@ class PostRepository {
 
   // ---- saved posts (kept on the server so they follow you between devices)
 
+  static const _savedIdsKey = 'saved_ids';
+  static const _savedPostsKey = 'saved_posts';
+  static const _cachedSaved = 50;
+
+  /// The last known ids of my saved posts, or null before the first load.
+  List<int>? cachedSavedIds() {
+    final cached = _cache.read(_savedIdsKey);
+    return cached is List ? [for (final id in cached) asInt(id)] : null;
+  }
+
+  Future<void> cacheSavedIds(Iterable<int> ids) =>
+      _cache.write(_savedIdsKey, ids.toList());
+
   /// Ids of the posts I saved, newest first.
   Future<List<int>> savedIds() async {
     final data = await _api.get('/posts/saved/ids');
-    return data is List ? [for (final id in data) asInt(id)] : const [];
+    final ids = data is List ? [for (final id in data) asInt(id)] : <int>[];
+    await cacheSavedIds(ids);
+    return ids;
+  }
+
+  /// The last known saved posts, or null before the first load.
+  List<Post>? cachedSavedPosts() {
+    final cached = _cache.read(_savedPostsKey);
+    return cached == null
+        ? null
+        : asMapList(cached).map(Post.fromJson).toList();
   }
 
   Future<List<Post>> savedPosts() async {
     final data = await _api.get('/posts/saved');
-    return asMapList(data).map(Post.fromJson).toList();
+    final list = asMapList(data);
+    await _cache.write(_savedPostsKey, list.take(_cachedSaved).toList());
+    return list.map(Post.fromJson).toList();
   }
 
   /// Returns true when the post is now saved.
