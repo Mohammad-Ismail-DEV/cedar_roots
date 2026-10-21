@@ -26,6 +26,24 @@ class NavBar extends ConsumerStatefulWidget {
 
 class _NavBarState extends ConsumerState<NavBar> {
   late int _tab = widget.initialIndex;
+  late final PageController _pages = PageController(initialPage: _tab);
+
+  @override
+  void dispose() {
+    _pages.dispose();
+    super.dispose();
+  }
+
+  /// Switches tab with a slide; swiping sideways between the pages does the same.
+  void _go(int index) {
+    if (index == _tab) return;
+    FocusManager.instance.primaryFocus?.unfocus();
+    _pages.animateToPage(
+      index,
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeOut,
+    );
+  }
 
   static const _screens = <Widget>[
     HomeScreen(),
@@ -39,7 +57,7 @@ class _NavBarState extends ConsumerState<NavBar> {
   /// Back goes to Home from the other tabs; on Home a second press within two seconds exits.
   void _onBack() {
     if (_tab != 0) {
-      setState(() => _tab = 0);
+      _go(0);
       return;
     }
     final now = DateTime.now();
@@ -97,7 +115,14 @@ class _NavBarState extends ConsumerState<NavBar> {
         if (!didPop) _onBack();
       },
       child: Scaffold(
-        body: IndexedStack(index: _tab, children: _screens),
+        body: PageView(
+          controller: _pages,
+          onPageChanged: (index) {
+            FocusManager.instance.primaryFocus?.unfocus();
+            setState(() => _tab = index);
+          },
+          children: [for (final screen in _screens) _KeepAlive(child: screen)],
+        ),
         bottomNavigationBar: DecoratedBox(
           decoration: BoxDecoration(
             color: Theme.of(context).scaffoldBackgroundColor,
@@ -115,7 +140,7 @@ class _NavBarState extends ConsumerState<NavBar> {
                     Icons.home_filled,
                     _tab == 0,
                   ),
-                  onTap: () => setState(() => _tab = 0),
+                  onTap: () => _go(0),
                 ),
                 _item(
                   label: 'Search',
@@ -126,7 +151,7 @@ class _NavBarState extends ConsumerState<NavBar> {
                     color: color,
                     weight: _tab == 1 ? 800 : 400,
                   ),
-                  onTap: () => setState(() => _tab = 1),
+                  onTap: () => _go(1),
                 ),
                 _item(
                   label: 'Create a post',
@@ -142,7 +167,7 @@ class _NavBarState extends ConsumerState<NavBar> {
                     Icons.calendar_month,
                     _tab == 2,
                   ),
-                  onTap: () => setState(() => _tab = 2),
+                  onTap: () => _go(2),
                 ),
                 _item(
                   label: 'Profile',
@@ -164,7 +189,7 @@ class _NavBarState extends ConsumerState<NavBar> {
                       backgroundColor: palette.avatarBg,
                     ),
                   ),
-                  onTap: () => setState(() => _tab = 3),
+                  onTap: () => _go(3),
                 ),
               ],
             ),
@@ -172,5 +197,28 @@ class _NavBarState extends ConsumerState<NavBar> {
         ),
       ),
     );
+  }
+}
+
+/// Keeps a tab's state (scroll position, loaded data) while it is off screen, as the old
+/// IndexedStack did.
+class _KeepAlive extends StatefulWidget {
+  const _KeepAlive({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_KeepAlive> createState() => _KeepAliveState();
+}
+
+class _KeepAliveState extends State<_KeepAlive>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return widget.child;
   }
 }
