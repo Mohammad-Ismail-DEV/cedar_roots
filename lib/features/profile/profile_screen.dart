@@ -48,7 +48,24 @@ class _Profile extends ConsumerStatefulWidget {
 }
 
 class _ProfileState extends ConsumerState<_Profile> {
-  bool _showSaved = false;
+  Offset? _pointerStart;
+
+  bool get _showSaved => _isMine && ref.watch(savedTabProvider);
+  void _setSaved(bool value) =>
+      ref.read(savedTabProvider.notifier).state = value;
+
+  /// A clear sideways swipe flips between Posts and Saved on my own profile.
+  void _onPointerUp(PointerUpEvent event) {
+    final start = _pointerStart;
+    _pointerStart = null;
+    if (start == null || !_isMine) return;
+    final dx = event.position.dx - start.dx;
+    final dy = event.position.dy - start.dy;
+    if (dx.abs() < 70 || dx.abs() < dy.abs() * 2) return;
+    final saved = ref.read(savedTabProvider);
+    if (dx < 0 && !saved) _setSaved(true);
+    if (dx > 0 && saved) _setSaved(false);
+  }
 
   int get _userId => widget.userId;
   bool get _isMine => widget.userId == widget.myUserId;
@@ -403,13 +420,13 @@ class _ProfileState extends ConsumerState<_Profile> {
                 Icons.grid_on_outlined,
                 'Posts',
                 !_showSaved,
-                () => setState(() => _showSaved = false),
+                () => _setSaved(false),
               ),
               _tab(
                 Icons.bookmark_border,
                 'Saved',
                 _showSaved,
-                () => setState(() => _showSaved = true),
+                () => _setSaved(true),
               ),
             ],
           )
@@ -477,35 +494,41 @@ class _ProfileState extends ConsumerState<_Profile> {
             ),
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: () async => ref.invalidate(profileProvider(_userId)),
-        child: CustomScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          slivers: [
-            SliverToBoxAdapter(child: _header(data)),
-            if (posts.isEmpty)
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 48),
-                  child: Center(
-                    child:
-                        saved.isLoading && _showSaved
-                            ? const CircularProgressIndicator()
-                            : Text(
-                              emptyText,
-                              style: TextStyle(color: context.palette.muted),
-                            ),
+      body: Listener(
+        onPointerDown: (e) => _pointerStart = e.position,
+        onPointerCancel: (_) => _pointerStart = null,
+        onPointerUp: _onPointerUp,
+        child: RefreshIndicator(
+          onRefresh: () async => ref.invalidate(profileProvider(_userId)),
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              SliverToBoxAdapter(child: _header(data)),
+              if (posts.isEmpty)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 48),
+                    child: Center(
+                      child:
+                          saved.isLoading && _showSaved
+                              ? const CircularProgressIndicator()
+                              : Text(
+                                emptyText,
+                                style: TextStyle(color: context.palette.muted),
+                              ),
+                    ),
                   ),
+                )
+              else
+                PostGrid(
+                  posts: posts,
+                  onOpen:
+                      (post) =>
+                          Navigator.push(context, AppRoutes.post(post.id)),
                 ),
-              )
-            else
-              PostGrid(
-                posts: posts,
-                onOpen:
-                    (post) => Navigator.push(context, AppRoutes.post(post.id)),
-              ),
-            const SliverToBoxAdapter(child: SizedBox(height: 24)),
-          ],
+              const SliverToBoxAdapter(child: SizedBox(height: 24)),
+            ],
+          ),
         ),
       ),
     );
