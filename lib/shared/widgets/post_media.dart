@@ -54,6 +54,29 @@ class TextPostCard extends StatelessWidget {
   }
 }
 
+/// Short words fit nicely on a gradient square; anything longer would be cut off, so it is shown
+/// as normal text instead.
+bool isLongPostText(String text) =>
+    text.trim().length > 150 || '\n'.allMatches(text.trim()).length >= 4;
+
+/// A text-only post too long for the gradient square: just its words, in full.
+class LongTextPost extends StatelessWidget {
+  const LongTextPost({super.key, required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 4, 14, 10),
+      child: SelectableText(
+        text,
+        style: const TextStyle(fontSize: 16, height: 1.4),
+      ),
+    );
+  }
+}
+
 /// What a post shows edge to edge: its photo at its own shape, or its text on a gradient.
 class PostMedia extends StatelessWidget {
   const PostMedia({super.key, required this.post, this.onPhotoTap});
@@ -68,6 +91,7 @@ class PostMedia extends StatelessWidget {
     if (hasPhoto) {
       return PostImage(url: post.imageUrl!, onTap: onPhotoTap, borderRadius: 0);
     }
+    if (isLongPostText(post.content)) return LongTextPost(text: post.content);
     return TextPostCard(userId: post.userId, text: post.content);
   }
 }
